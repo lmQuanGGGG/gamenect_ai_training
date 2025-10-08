@@ -1,0 +1,67 @@
+name: Daily Model Training & Deploy
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Chạy mỗi ngày lúc 2h sáng UTC (9h VN)
+  workflow_dispatch:      # Cho phép chạy thủ công từ GitHub UI
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/train_user_model.py'
+      - 'pipelines/**'
+      - 'collectors/**'
+
+jobs:
+  train_and_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy scikit-learn joblib firebase-admin python-dotenv geopy requests pyyaml rich shap matplotlib
+
+    - name: Setup Firebase credentials
+      run: |
+        echo '${{ secrets.FIREBASE_KEY }}' > firebase-key.json
+        echo "FIREBASE_CREDENTIALS_PATH=./firebase-key.json" >> .env
+        echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env
+
+    - name: Collect data from Firebase
+      run: |
+        python scripts/collect_from_firebase.py
+
+    - name: Train model
+      run: |
+        python scripts/train_user_model.py
+
+    - name: Test model
+      run: |
+        python scripts/test_pairwise_model.py
+
+    - name: Upload trained models
+      uses: actions/upload-artifact@v3
+      with:
+        name: trained-models
+        path: |
+          models/*.pkl
+        retention-days: 30
+
+    - name: Upload logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: training-logs
+        path: |
+          logs/training_history/*.json
+        retention-days: 7
