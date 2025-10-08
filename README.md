@@ -7,10 +7,10 @@
 4. pip install -e .
 
 ## Thu thập dữ liệu
-python scripts/run_collector.py
+python scripts/collect_from_firebase.py
 
 ## Huấn luyện
-python scripts/train_model.py
+python scripts/train_user_model.py
 
 ## Đánh giá
 python scripts/evaluate_model.py
