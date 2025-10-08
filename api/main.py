@@ -80,7 +80,7 @@ class UserProfile(BaseModel):
 class RecommendationRequest(BaseModel):
     current_user: UserProfile
     candidate_users: List[UserProfile]
-    top_k: int = 10
+    top_k: int = 10000000
     preference_mode: str = "balanced"  # balanced, mentor_mentee, same_style, nearby
 
 @app.get("/")
