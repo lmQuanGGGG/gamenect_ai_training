@@ -14,3 +14,4 @@ python scripts/train_model.py
 
 ## Đánh giá
 python scripts/evaluate_model.py
+# gamenect_ai_training
