@@ -3,6 +3,5 @@ venv/
 __pycache__/
 *.pyc
 logs/
-models/
 data/
 gamenect_ai_training.egg-info/
