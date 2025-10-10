@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import os
 from rich.console import Console
 from datetime import datetime
+from google.cloud.firestore_v1._helpers import DatetimeWithNanoseconds
 
 console = Console()
 load_dotenv()
@@ -22,6 +23,17 @@ class FirestoreCollectorConfig:
     raw_output_dir: Path
     batch_size: int = 500
     max_samples: int = 10000
+
+
+def convert_firestore_data(obj):
+    """Convert Firestore-specific types to JSON-serializable types"""
+    if isinstance(obj, (DatetimeWithNanoseconds, datetime)):
+        return obj.isoformat()  # Convert to ISO8601 string
+    elif isinstance(obj, dict):
+        return {key: convert_firestore_data(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_firestore_data(item) for item in obj]
+    return obj
 
 
 class FirestoreCollector:
@@ -84,18 +96,35 @@ class FirestoreCollector:
             except:
                 swipes = []
             
+            # Collect swipe_history
+            try:
+                swipe_history_ref = self.db.collection('swipe_history')
+                swipe_history = []
+                for doc in swipe_history_ref.stream():
+                    swipe = doc.to_dict()
+                    swipe['id'] = doc.id
+                    swipe_history.append(swipe)
+                console.log(f"Da thu thap {len(swipe_history)} swipe_history")
+            except Exception as e:
+                console.log(f"Khong thu thap duoc swipe_history: {e}")
+                swipe_history = []
+            
             return {
                 'likes': likes,
                 'matches': matches,
                 'swipes': swipes,
+                'swipe_history': swipe_history,
                 'collected_at': datetime.now().isoformat()
             }
         except Exception as e:
             print(f"Error collecting interactions: {e}")
-            return {'likes': [], 'matches': [], 'swipes': []}
+            return {'likes': [], 'matches': [], 'swipes': [], 'swipe_history': []}
 
     def collect_matches(self) -> List[Dict[str, Any]]:
-        return self._collect_collection("match_history")
+        return self._collect_collection("matches")
+    
+    def collect_swipe_history(self) -> List[Dict[str, Any]]:
+        return self._collect_collection("swipe_history")
 
     def export_to_json(self) -> Dict[str, Path]:
         self.config.raw_output_dir.mkdir(parents=True, exist_ok=True)
@@ -104,11 +133,16 @@ class FirestoreCollector:
             "users": self.collect_users(),
             "interactions": self.collect_interactions(),
             "matches": self.collect_matches(),
+            "swipe_history": self.collect_swipe_history(),
         }
         for name, data in datasets.items():
             output_path = self.config.raw_output_dir / f"{name}.json"
+            
+            # Convert Firestore data before dumping to JSON
+            converted_data = convert_firestore_data(data)
+            
             with output_path.open("w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                json.dump(converted_data, f, ensure_ascii=False, indent=2)
             outputs[name] = output_path
             console.log(f"Da luu du lieu {name} tai {output_path}")
         return outputs
