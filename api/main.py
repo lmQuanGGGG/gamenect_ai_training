@@ -1,7 +1,7 @@
 """
 FastAPI server để serve trained models
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -10,6 +10,9 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import sys
+import os
+import io
+import requests
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -340,6 +343,37 @@ async def recommend(request: RecommendationRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/reload_model")
+async def reload_model(authorization: str = Header(None), model: UploadFile = File(None)):
+    # Xác thực token
+    token = None
+    if authorization:
+        parts = authorization.split()
+        if len(parts) == 2:
+            token = parts[1]
+    if token != os.getenv("MODEL_DOWNLOAD_TOKEN"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Nhận file model trực tiếp
+    if model is not None:
+        try:
+            bio = io.BytesIO(await model.read())
+            bio.seek(0)
+            new = joblib.load(bio)
+            global pairwise_model, scaler, feature_names
+            if isinstance(new, dict):
+                pairwise_model = new.get("model", pairwise_model)
+                scaler = new.get("scaler", scaler)
+                feature_names = new.get("feature_names", feature_names)
+            else:
+                pairwise_model = new
+            print("Model reload request received and loaded!")  # Log xác nhận
+            return {"status": "ok", "message": "model reloaded (file upload)"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"reload failed: {e}")
+
+    raise HTTPException(status_code=400, detail="No model file provided")
 
 if __name__ == "__main__":
     import uvicorn

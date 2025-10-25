@@ -65,3 +65,9 @@ jobs:
         path: |
           logs/training_history/*.json
         retention-days: 7
+
+    - name: Reload model on Railway API
+      run: |
+        curl -X POST "${{ secrets.API_RELOAD_URL }}" \
+          -H "Authorization: Bearer ${{ secrets.MODEL_DOWNLOAD_TOKEN }}" \
+          -F "model=@models/pairwise_compatibility_model.pkl"
