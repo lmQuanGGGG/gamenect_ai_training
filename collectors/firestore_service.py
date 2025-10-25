@@ -126,6 +126,14 @@ class FirestoreCollector:
     def collect_swipe_history(self) -> List[Dict[str, Any]]:
         return self._collect_collection("swipe_history")
 
+    def collect_swipe_latest(self) -> List[Dict[str, Any]]:
+        """Collect latest swipe snapshots from Firestore if collection exists."""
+        try:
+            return self._collect_collection("swipe_latest")
+        except Exception as e:
+            console.log(f"Khong thu thap duoc swipe_latest: {e}")
+            return []
+
     def export_to_json(self) -> Dict[str, Path]:
         self.config.raw_output_dir.mkdir(parents=True, exist_ok=True)
         outputs = {}
@@ -134,6 +142,7 @@ class FirestoreCollector:
             "interactions": self.collect_interactions(),
             "matches": self.collect_matches(),
             "swipe_history": self.collect_swipe_history(),
+            "swipe_latest": self.collect_swipe_latest(),
         }
         for name, data in datasets.items():
             output_path = self.config.raw_output_dir / f"{name}.json"
