@@ -4,4 +4,4 @@ __pycache__/
 *.pyc
 logs/
 data/
-gamenect_ai_training.egg-info/
+gamenect_ai_training.egg-info/gamenect-*.json

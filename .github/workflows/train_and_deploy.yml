@@ -8,7 +8,8 @@ on:
     branches:
       - main
     paths:
-      - 'scripts/train_user_model.py'
+      - 'scripts/train_real_data.py'
+      - 'scripts/collect_from_firebase.py'
       - 'pipelines/**'
       - 'collectors/**'
 
@@ -44,7 +45,7 @@ jobs:
 
     - name: Train model
       run: |
-        python scripts/train_user_model.py
+        python scripts/train_real_data.py
 
     - name: Test model
       run: |
@@ -70,4 +71,5 @@ jobs:
       run: |
         curl -X POST "${{ secrets.API_RELOAD_URL }}" \
           -H "Authorization: Bearer ${{ secrets.MODEL_DOWNLOAD_TOKEN }}" \
-          -F "model=@models/pairwise_compatibility_model.pkl"
+          -F "model=@models/pairwise_compatibility_model.pkl" \
+          -F "scaler=@models/pairwise_scaler.pkl"
