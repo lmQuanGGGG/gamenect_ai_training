@@ -1,8 +1,8 @@
 # 🎮 GameNect AI Training — Tài Liệu Kỹ Thuật Đầy Đủ
 
-> **Phiên bản:** 1.0.0 | **Cập nhật:** 2026-04-20  
+> **Phiên bản:** 3.0.0 | **Cập nhật:** Nay
 > **Tác giả:** Gamenect Team  
-> **Mục tiêu:** Hệ thống AI dự đoán độ tương thích giữa game thủ — tương tự Tinder nhưng dành cho gaming
+> **Mục tiêu:** Hệ thống AI v3.0 dự đoán độ tương thích dựa trên Phân tích Dữ liệu Hybrid (Quy tắc + Lịch sử Quẹt/Match thực tế).
 
 ---
 
@@ -53,17 +53,17 @@ Hệ thống gồm **2 components chính**:
 │              DATA LAYER  (data/raw/)           │
 │  users.json  |  matches.json  |  swipes.json  │
 └────────────────────────┬──────────────────────┘
-                         │ train_user_model.py
+                         │ train_real_data.py (Pipeline v3.0)
                          ▼
 ┌───────────────────────────────────────────────────────────────┐
-│                  TRAINING PIPELINE                             │
+│                  HYBRID TRAINING PIPELINE                      │
 │                                                                │
-│  1. Load & Clean Data (fillna, handle nested location)         │
-│  2. Create Pairwise Training Pairs (10,000 pairs, 50/50)       │
-│  3. Feature Engineering (37 features per pair)                 │
+│  1. Load Real Data (swipe_history, matches) & Users Profile    │
+│  2. Create Real Pairs + Synthetic Pairs (Hybrid 6000+ pairs)   │
+│  3. Feature Engineering (62 features per pair)                 │
 │  4. StandardScaler normalization                               │
-│  5. GradientBoostingClassifier (300 trees, depth=6)            │
-│  6. Evaluate (Classification Report + ROC-AUC)                 │
+│  5. GradientBoostingClassifier (RandomizedSearchCV Tuning)     │
+│  6. Evaluate (ROC-AUC, SHAP Explainability)                    │
 └────────────────────────┬──────────────────────────────────────┘
                          │ joblib.dump()
                          ▼
@@ -71,7 +71,7 @@ Hệ thống gồm **2 components chính**:
 │            models/                      │
 │  pairwise_compatibility_model.pkl       │  ← GBC model
 │  pairwise_scaler.pkl                    │  ← StandardScaler
-│  pairwise_feature_names.pkl             │  ← Danh sách 37 features
+│  pairwise_feature_names.pkl             │  ← Danh sách 62 features
 └────────────────────────┬────────────────┘
                          │ joblib.load() on startup
                          ▼
@@ -99,9 +99,10 @@ Toàn bộ dữ liệu được lấy từ **Firebase Firestore** của project 
 
 | Collection | Nội dung | Dùng để |
 |------------|----------|---------|
-| `users` | Hồ sơ người dùng | **Dữ liệu chính để train** |
-| `likes` | Lịch sử lượt thích | Tham khảo (chưa dùng trong v1) |
-| `matches` | Các cặp đã match | Tham khảo |
+| `users` | Hồ sơ người dùng | **Feature chính để train** |
+| `likes` | Lịch sử lượt thích | Feature phụ trợ |
+| `matches` | Các cặp đã match | **Làm nhãn Real Pairs (Label=1)** |
+| `swipe_latest`/`history` | Lịch sử vuốt | **Làm nhãn Real Pairs (Like=1, Dislike=0)** |
 | `swipes` | Lịch sử vuốt | Tham khảo |
 | `swipe_history` | Lịch sử chi tiết | Tham khảo |
 
@@ -210,10 +211,10 @@ km = 6371 · c
 
 ---
 
-#### Lớp 2 — `create_pairwise_features()` (scripts/train_user_model.py)
-> Dùng cho **GradientBoosting model** (Scikit-Learn) — **Model đang production**
+#### Lớp 2 — `create_features()` (scripts/train_real_data.py)
+> Dùng cho **GradientBoosting model** (Scikit-Learn) — **Model đang production v3.0**
 
-**Đây là model thực sự được dùng.** Tạo **37 features theo cặp (pairwise)** — không encode riêng từng user mà so sánh trực tiếp cặp:
+**Đây là model thực sự được dùng.** Tạo **62 features theo cặp (pairwise)** — không encode riêng từng user mà so sánh trực tiếp cặp:
 
 | # | Feature | Ý Nghĩa | Loại |
 |---|---------|---------|------|
@@ -253,7 +254,7 @@ km = 6371 · c
 | 34 | `compatibility_factor_score` | Tổng hợp 7 yếu tố chính (0–1) | Numeric |
 | 35 | `activity_gap` | \|log(playtime1) - log(playtime2)\| | Numeric |
 | 36 | `avg_engagement` | TB (views + likes + matches) / 3 | Numeric |
-| 37 | `engagement_gap` | Chênh lệch engagement | Numeric |
+*(Danh sách chi tiết gồm 62 thông số từ tuổi, rank, khoảng cách vị trí đến cả mức độ tương tác như lượng Match hay lượng Like trên tổng quan nền tảng).*
 
 **Bảng tương thích phong cách game:**
 
@@ -284,9 +285,9 @@ Trong đó μ là mean, σ là standard deviation tính từ tập train. Scaler
 
 ## 5. Hai Model Trong Dự Án
 
-### Model 1 — GradientBoostingClassifier ✅ (Đang Production)
+### Model 1 — GradientBoostingClassifier ✅ (Đang Production v3.0)
 
-**File:** `scripts/train_user_model.py`  
+**File:** `scripts/train_real_data.py`  
 **Saved:** `models/pairwise_compatibility_model.pkl`
 
 ```python
@@ -347,27 +348,16 @@ Output: Dense(1, sigmoid) → match_probability [0..1]
 
 ## 6. Quy Trình Training Chi Tiết
 
-### 6.1 Tạo Cặp Training (Pairwise Sampling)
+### 6.1 Tạo Cặp Training (Hybrid Pairwise Sampling)
 
-Vì dữ liệu thực (lượt like/swipe thực) chưa được dùng, model **tự sinh** cặp training từ user profiles:
+Khác với v1.0, phiên bản v3.0 kết hợp cả **Dữ liệu 100% Thực Tế** và **Dữ liệu Giả Lập**:
 
-**Cân bằng 50% Compatible / 50% Incompatible (10,000 pairs):**
+**1. Real Pairs (Dữ liệu Quẹt/Match thực):**
+- Trích xuất toàn bộ lịch sử quẹt trái/phải (`swipe_history`).
+- Điểm đánh trọng số (Weight): Các cặp match thực tế sẽ được nhân `weight = 1.0 -> 2.0` để AI ưu tiên học thói quen thực của môi trường hơn.
 
-```
-Compatible pairs (5,000):
-  - Chọn user1 ngẫu nhiên
-  - Tìm user2 thỏa: |age_diff| ≤ 7 VÀ |win_rate_diff| ≤ 25
-  - Tính features → chấp nhận nếu deal_breaker_count ≤ 1
-  - Label = 1
-
-Incompatible pairs (5,000):
-  - Chọn cả 2 ngẫu nhiên
-  - Nếu vi phạm ≥2 deal breakers → Label = 0
-  - Nếu compatibility_factor_score ≥ 0.5 → Label = 1 (diversity)
-  - Còn lại → 70% label=0, 30% label=1 (ngẫu nhiên)
-```
-
-> **Lưu ý quan trọng:** Đây là synthetic labels — không dựa trên hành vi thực. Khi có đủ dữ liệu swipe/like thực, cần thay thế bằng real labels.
+**2. Synthetic Pairs (Dữ lệu mô phỏng/Quy tắc):**
+- Bổ sung data để giải quyết Cold-Start, nhưng bị ép `weight = 0.5` để không làm lấn át Data thực tế. Nhìn chung sẽ cân bằng ở tỉ lệ `40% Real - 60% Synthetic`.
 
 ### 6.2 Train/Test Split
 
@@ -381,14 +371,14 @@ users.json (data/raw/)
     ↓
 DataFrame (fillna, handle nested location)
     ↓
-create_training_pairs(df, num_pairs=10000)  → X (37 cols), y (10000 labels)
+train_real_data.py
     ↓
-fillna(0), replace(inf, 0)
+Hybrid Dataset: Real (swipes/matches) + Synthetic
     ↓
-train_test_split(0.2, stratify=y)
+RandomizedSearchCV (Tuning Hyperparameters)
     ↓
-StandardScaler.fit_transform(X_train)   ← fit chỉ trên train
-StandardScaler.transform(X_test)        ← chỉ transform test
+StandardScaler.fit_transform(X_train)   
+StandardScaler.transform(X_test)        
     ↓
 GradientBoostingClassifier.fit(X_train_scaled, y_train)
     ↓
@@ -529,16 +519,16 @@ python scripts/preprocess_users.py
 # Hiển thị thống kê cơ bản về dữ liệu
 ```
 
-### Bước 5 — Train Model
+### Bước 5 — Train Model (Pipeline 3.0)
 
 ```bash
-python scripts/train_user_model.py
+python scripts/train_real_data.py
 
 # Sẽ:
-# 1. Load data/raw/users.json
-# 2. Tạo 10,000 cặp training
+# 1. Load users, matches, swipes
+# 2. Tạo Hybrid Dataset (Thực tế + Giả lập)
 # 3. Train GradientBoostingClassifier
-# 4. In Classification Report + ROC-AUC
+# 4. Xuất Biểu Đồ vào reports/ (Learning curve, SHAP)
 # 5. Lưu vào models/
 ```
 

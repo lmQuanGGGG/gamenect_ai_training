@@ -1,0 +1,16 @@
+README.md
+pyproject.toml
+collectors/__init__.py
+collectors/firestore_service.py
+gamenect_ai_training.egg-info/PKG-INFO
+gamenect_ai_training.egg-info/SOURCES.txt
+gamenect_ai_training.egg-info/dependency_links.txt
+gamenect_ai_training.egg-info/requires.txt
+gamenect_ai_training.egg-info/top_level.txt
+pipelines/__init__.py
+pipelines/dataset_builder.py
+pipelines/feature_engineering.py
+pipelines/model_architecture.py
+services/__init__.py
+services/data_collector_api.py
+tests/test_pipeline.py
