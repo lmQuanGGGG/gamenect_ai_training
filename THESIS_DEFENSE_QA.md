@@ -135,3 +135,67 @@ Trực tiếp ở khâu thiết kế Model, thuật toán của em sử dụng t
 * 🛡️ **Hướng trả lời:**
 "Dạ hoàn toàn không sập ạ. Để giải quyết rủi ro Bottle-neck này, thuật toán ở Backend API thiết kế một mạng lưới **Candidate Filtering (Lọc ứng viên thô)** trước khi truyền cho Machine Learning.
 Khi có yêu cầu từ người dùng, hệ thống chỉ khoanh vùng (Query Bounds) vị trí địa lý trong bán kính Max Distance và giới hạn độ tuổi mà người dùng thiết lập. Truy vấn thô (Pre-filter) này loại bỏ đi 99% lượng user nằm ngoài bộ lọc. Sau đó, Model AI mới áp dụng tính toán ma trận độ tương thích cho danh sách khoảng 500 Candidates cuối cùng sót lại. Việc này tiết kiệm tài nguyên Cloud cực lớn ạ."
+
+---
+
+## 📈 CÂU HỎI 11: GIẢI THÍCH Ý NGHĨA 5 BIỂU ĐỒ REPORT (REPORT CHARTS)
+
+👨‍🏫 **Hội đồng hỏi:** *"Trong phần báo cáo có 5 biểu đồ đánh giá model, em hãy giải thích ngắn gọn ý nghĩa của từng biểu đồ và nó chứng minh điều gì cho hệ thống của em?"*
+
+* 🛡️ **Hướng trả lời:**
+1. **Biểu đồ `learning_curve.png` (Đường cong học tập):** Dùng để chứng minh mô hình **không bị bệnh 'học vẹt' (Overfitting)**. Đường điểm số của tập Train và tập Validation hội tụ sát lại với nhau khi lượng dữ liệu tăng lên. Điều này chứng tỏ AI thực sự 'hiểu' được quy luật ghép đôi thay vì chỉ học thuộc lòng đáp án.
+2. **Biểu đồ `model_evaluation.png` (Ma trận nhầm lẫn & ROC):** Đây là bài thi thực tế của AI. Ở Confusion Matrix, hai ô True Positive và True Negative có số lượng lớn nhất, cho thấy AI đoán trúng phóc các cặp Match và Không Match. Chỉ số ROC-AUC đạt mức rất cao (0.91 đến 0.96) khẳng định AI phân tách người dùng cực kỳ dứt khoát.
+3. **Biểu đồ `score_distribution.png` (Phân bổ điểm số):** Thể hiện **sự dứt khoát** của AI. Hai đỉnh đồ thị tách biệt rõ ràng: Đỉnh màu xanh (Không hợp) dồn về mốc điểm rất thấp, đỉnh màu cam (Hợp nhau) tập trung ở mốc điểm rất cao. AI không hề lưỡng lự hay chấm điểm mập mờ.
+4. **Biểu đồ `shap_importance.png` (Xếp hạng độ quan trọng):** Giúp 'giải mã' hộp đen AI. Biểu đồ xếp hạng các yếu tố quan trọng nhất quyết định việc ghép đôi (thanh dài nhất nằm trên cùng như Khoảng cách, Phong cách chơi, Chênh lệch tuổi). Điều này chứng tỏ AI tư duy cực kỳ logic giống hệt tâm lý con người.
+5. **Biểu đồ `shap_beeswarm.png` (Tác động chi tiết):** Cho thấy **chiều tác động** của từng yếu tố. Chấm đỏ là giá trị cao, xanh là thấp. Ví dụ: 'Khoảng cách' màu đỏ nằm dạt về bên trái trục 0 (Khoảng cách càng xa thì điểm Match càng bị trừ nặng). Hệ thống hoạt động hoàn hảo và thực tế.
+
+---
+
+## 🧩 CÂU HỎI 12: CHỈ SỐ COMPAT_FACTOR_SCORE LÀ GÌ? TẠI SAO LÀ 11 YẾU TỐ?
+
+👨‍🏫 **Hội đồng hỏi:** *"Biến `compat_factor_score` đóng vai trò quan trọng nhất (18.2%). Biến này là gì và tại sao em lại thiết kế nó bao gồm 11 yếu tố thay vì 7 yếu tố như lúc đầu?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ thưa thầy cô, biến `compat_factor_score` là một **chỉ số tương thích nền tảng (từ 0 đến 1)** đóng vai trò như một 'chiếc mỏ neo' định hướng mạnh mẽ cho AI trước khi nó xét đến các thông số phức tạp khác. Bản chất của nó là lấy trung bình cộng của 11 điều kiện cốt lõi nhất.
+
+Ở phiên bản Baseline (dữ liệu giả), em chỉ dùng **7 yếu tố cơ bản** (Khớp giới tính, Khớp độ tuổi, Khớp khoảng cách, Hợp phong cách chơi, Trình độ tương đương, Khoảng cách dưới 50km, Chênh lệch dưới 7 tuổi).
+
+Tuy nhiên, khi chuyển sang train với **Dữ liệu thật (Real Data)** từ Firebase ở phiên bản AI v3.0, hành vi người dùng đa dạng và phức tạp hơn rất nhiều. Do đó, em đã tiến hành Feature Engineering để nâng cấp bộ 'Mỏ neo' này lên thành **11 yếu tố**, bổ sung thêm 4 ràng buộc cực kỳ thực tế:
+8. **Chơi chung tựa game:** Có ít nhất 1 game chung (điều kiện tiên quyết để chơi chung).
+9. **Cùng mục đích:** Cùng tìm người leo rank, hoặc tìm bạn tâm giao.
+10. **Tài khoản xác thực (Verified):** Tăng độ tin cậy và an toàn (trust/safety).
+11. **Trạng thái Hoạt động:** Cả 2 đều có hoạt động trong 30 ngày đổ lại (tránh ghép với tài khoản đã 'chết').
+
+Việc nâng cấp này giúp AI chặn ngay các tài khoản ảo hoặc không còn hoạt động, tăng tính thực tiễn khi triển khai ra hệ thống thật ạ."
+
+---
+
+## ❄️ CÂU HỎI 13: BÀI TOÁN COLD-START (KHỞI ĐỘNG LẠNH)
+
+👨‍🏫 **Hội đồng hỏi:** *"Hệ thống của em là gợi ý ghép đôi (Recommender System). Vậy với một User VỪA MỚI TẠO TÀI KHOẢN, chưa hề có lịch sử Quẹt (Like/Dislike) hay Match, thì AI lấy cơ sở ở đâu để gợi ý cho họ?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ đây chính là bài toán **Cold-Start Problem** cực kỳ kinh điển. Để giải quyết, mô hình AI của nhóm em sử dụng phương pháp **Content-Based Filtering (Lọc theo nội dung)** kết hợp với **Hybrid Dataset**.
+Khi user mới vào, AI sẽ không dùng lịch sử tương tác (vì chưa có), mà nó sẽ bóc tách ngay **54 thông số tĩnh (Static Features)** từ profile họ vừa khai báo (như Độ tuổi, Khoảng cách GPS, Giới tính tìm kiếm, Phong cách chơi game, Tựa game yêu thích). Từ đó, AI sử dụng bộ dữ liệu Synthetic (những quy tắc chuẩn mực mà nhóm đã mồi sẵn với trọng số 0.5) để tìm ra những người có Profile tương đồng nhất. Nhờ vậy, ngay từ lần quẹt đầu tiên, user đã thấy những ứng viên rất sát với nhu cầu của mình ạ."
+
+---
+
+## 🔒 CÂU HỎI 14: BẢO MẬT VÀ QUYỀN RIÊNG TƯ DỮ LIỆU (DATA PRIVACY)
+
+👨‍🏫 **Hội đồng hỏi:** *"Để AI tính toán được, App Flutter phải gửi toàn bộ dữ liệu nhạy cảm (Tọa độ GPS, Tuổi, Giới tính) của người dùng qua API của server FastAPI. Vậy em xử lý vấn đề bảo mật dữ liệu này như thế nào?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ thưa thầy cô, nhóm em thiết kế kiến trúc AI hoàn toàn độc lập và **Không lưu trạng thái (Stateless)**. 
+Khi App gọi API để xin gợi ý, dữ liệu chỉ tồn tại trên RAM của server FastAPI trong đúng vài phần trăm giây để model thực hiện tính toán ma trận tương thích. Ngay khi tính toán xong và trả về điểm số, toàn bộ Payload dữ liệu bị hủy ngay lập tức, **Server AI không lưu trữ bất kỳ log hay record nào vào Database**.
+Ngoài ra, dữ liệu tọa độ (Latitude/Longitude) truyền lên chỉ dùng để thư viện `geopy` tính ra khoảng cách tuyệt đối (Distance_km) để nạp vào AI, chứ hệ thống không hề track vị trí cụ thể của người dùng ạ."
+
+---
+
+## ⚖️ CÂU HỎI 15: SAI SỐ AI (FALSE POSITIVE VS FALSE NEGATIVE)
+
+👨‍🏫 **Hội đồng hỏi:** *"Trong AI luôn có sai số. Theo em, việc AI ghép nhầm 2 người không hợp nhau (False Positive) và việc AI bỏ sót 2 người rất hợp nhau (False Negative), cái nào gây hậu quả nặng nề hơn cho App GameNect?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ theo quan điểm phát triển sản phẩm của nhóm em, việc **Bỏ sót (False Negative) gây hậu quả nặng nề hơn**. 
+Nếu AI gợi ý nhầm một người không hợp (False Positive), người dùng chỉ tốn 1 giây để Quẹt Trái (Bỏ qua) - việc này rất bình thường trên các app hẹn hò. 
+Nhưng nếu AI bỏ sót một 'tri kỷ' chơi game cực kỳ hợp (False Negative), chúng ta đang làm mất đi giá trị cốt lõi của mạng xã hội là sự kết nối. Vì vậy, trong quá trình Tune Model, ngoài độ chính xác, nhóm em đặc biệt tối ưu chỉ số **Recall (Độ phủ) lên mức 80%**, để đảm bảo 'Thà quét nhầm còn hơn bỏ sót' những ứng viên tiềm năng ạ."
