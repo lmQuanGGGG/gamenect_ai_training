@@ -10,7 +10,7 @@ LABELS (weighted multi-signal):
   Signal 4: matches cancelled → weak positive (1)        (8 match × 2 chiều)
   Signal 5: match quality    → confirmed=weight 2, cancelled=weight 1
 
-FEATURES (54 features từ tất cả profile data):
+FEATURES (62 features từ tất cả profile data):
   Group 1:  Tuổi & preferences    (Homophily Theory - McPherson 2001)
   Group 2:  Khoảng cách GPS       (Proximity Effect - Festinger 1950)
   Group 3:  Giới tính             (User preferences)
@@ -27,7 +27,7 @@ FEATURES (54 features từ tất cả profile data):
 
 PIPELINE:
   ① Load all signals → merge → weight
-  ② Feature engineering (54 features)
+  ② Feature engineering (62 features)
   ③ Hybrid dataset: real (weighted) + synthetic augment → ~8000 pairs
   ④ Compare 4 models với 5-Fold Stratified CV
   ⑤ Hyperparameter tuning (RandomizedSearchCV)
@@ -167,7 +167,7 @@ def merge_all_signals(swipe_history, swipe_latest, matches):
 
 
 # ══════════════════════════════════════════════════════════════════════
-# SECTION 3: FEATURE ENGINEERING — 54 FEATURES
+# SECTION 3: FEATURE ENGINEERING — 62 FEATURES
 # ══════════════════════════════════════════════════════════════════════
 
 def calc_distance(u1, u2):
@@ -201,7 +201,7 @@ def days_since(date_str):
 
 def create_features(u1, u2):
     """
-    Tạo 54 features cho cặp (u1, u2).
+    Tạo 62 features cho cặp (u1, u2).
     Dùng TẤT CẢ thông tin có trong user profile từ Firebase.
     """
     f = {}
@@ -741,7 +741,7 @@ def main():
 
     # 3. Build dataset
     print("\n" + "=" * 65)
-    print("🔨 BUILDING HYBRID DATASET (all signals + 54 features)")
+    print("🔨 BUILDING HYBRID DATASET (all signals + 62 features)")
     print("=" * 65)
     X_df, y, sample_weight = build_dataset(user_dict, labels, weights, target_total=8000)
     X = X_df.values

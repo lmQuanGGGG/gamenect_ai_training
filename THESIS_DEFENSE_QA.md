@@ -176,7 +176,7 @@ Việc nâng cấp này giúp AI chặn ngay các tài khoản ảo hoặc khôn
 
 * 🛡️ **Hướng trả lời:**
 "Dạ đây chính là bài toán **Cold-Start Problem** cực kỳ kinh điển. Để giải quyết, mô hình AI của nhóm em sử dụng phương pháp **Content-Based Filtering (Lọc theo nội dung)** kết hợp với **Hybrid Dataset**.
-Khi user mới vào, AI sẽ không dùng lịch sử tương tác (vì chưa có), mà nó sẽ bóc tách ngay **54 thông số tĩnh (Static Features)** từ profile họ vừa khai báo (như Độ tuổi, Khoảng cách GPS, Giới tính tìm kiếm, Phong cách chơi game, Tựa game yêu thích). Từ đó, AI sử dụng bộ dữ liệu Synthetic (những quy tắc chuẩn mực mà nhóm đã mồi sẵn với trọng số 0.5) để tìm ra những người có Profile tương đồng nhất. Nhờ vậy, ngay từ lần quẹt đầu tiên, user đã thấy những ứng viên rất sát với nhu cầu của mình ạ."
+Khi user mới vào, AI sẽ không dùng lịch sử tương tác (vì chưa có), mà nó sẽ bóc tách ngay **62 thông số tĩnh (Static Features)** từ profile họ vừa khai báo (như Độ tuổi, Khoảng cách GPS, Giới tính tìm kiếm, Phong cách chơi game, Tựa game yêu thích). Từ đó, AI sử dụng bộ dữ liệu Synthetic (những quy tắc chuẩn mực mà nhóm đã mồi sẵn với trọng số 0.5) để tìm ra những người có Profile tương đồng nhất. Nhờ vậy, ngay từ lần quẹt đầu tiên, user đã thấy những ứng viên rất sát với nhu cầu của mình ạ."
 
 ---
 
@@ -199,3 +199,131 @@ Ngoài ra, dữ liệu tọa độ (Latitude/Longitude) truyền lên chỉ dùn
 "Dạ theo quan điểm phát triển sản phẩm của nhóm em, việc **Bỏ sót (False Negative) gây hậu quả nặng nề hơn**. 
 Nếu AI gợi ý nhầm một người không hợp (False Positive), người dùng chỉ tốn 1 giây để Quẹt Trái (Bỏ qua) - việc này rất bình thường trên các app hẹn hò. 
 Nhưng nếu AI bỏ sót một 'tri kỷ' chơi game cực kỳ hợp (False Negative), chúng ta đang làm mất đi giá trị cốt lõi của mạng xã hội là sự kết nối. Vì vậy, trong quá trình Tune Model, ngoài độ chính xác, nhóm em đặc biệt tối ưu chỉ số **Recall (Độ phủ) lên mức 80%**, để đảm bảo 'Thà quét nhầm còn hơn bỏ sót' những ứng viên tiềm năng ạ."
+
+---
+
+## 💾 CÂU HỎI 16: NGUỒN DỮ LIỆU & CƠ CHẾ GÁN NHÃN TỰ ĐỘNG (LABELING)
+
+👨‍🏫 **Hội đồng hỏi:** *"Data set của nhóm lấy ở đâu ra? Và làm sao em đảm bảo dữ liệu này được gán nhãn (Labeling) đúng đắn trước khi cho AI học?"*
+
+* 🛡️ **Hướng trả lời:**
+1. **Về Nguồn Dữ Liệu:** Toàn bộ dữ liệu được kéo trực tiếp từ Database thật của dự án trên **Firebase Firestore**, bao gồm các Collections như hồ sơ người dùng (`users`), lịch sử vuốt (`swipe_history`), lịch sử tương tác (`likes`), và danh sách ghép đôi (`matches`).
+2. **Về Cơ Chế Gán Nhãn:** Hệ thống không gán nhãn bằng tay (Manual Labeling) mà dùng kỹ thuật tự động trích xuất từ hành vi người dùng kết hợp với **Trọng số (Weighted Labels)**:
+   * **Nhãn 1 (Tương thích):** Quẹt phải (Weight = 1.0), Match nhưng bị hủy (Weight = 0.8), Match thành công (Weight = 2.0 - Tín hiệu mạnh nhất).
+   * **Nhãn 0 (Không tương thích):** Quẹt trái (Weight = 1.0).
+Nhờ cơ chế này, mô hình học được chính xác thói quen quẹt thực tế của cộng đồng chứ không bị phụ thuộc vào giả định.
+
+---
+
+## 📏 CÂU HỎI 17: CHUẨN HÓA DỮ LIỆU ĐỂ TRÁNH THIÊN VỊ (NORMALIZATION)
+
+👨‍🏫 **Hội đồng hỏi:** *"Trong hồ sơ có thông số thì rất nhỏ (như độ tuổi 18-30), thông số lại rất to (giờ chơi lên tới 2000 giờ). Làm sao em biết AI không bị thiên vị những con số lớn?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ để giải quyết vấn đề này, trong Pipeline xử lý dữ liệu ở Section 7, nhóm em đã sử dụng công cụ **`StandardScaler`** của thư viện Scikit-Learn. 
+Công cụ này dùng công thức biến đổi Z-Score để nén mọi biến số (dù lớn hay nhỏ) về cùng một hệ quy chiếu chung (Mean = 0, Std = 1). Nhờ vậy, số giờ chơi 2000 giờ hay tỷ lệ thắng 50% đều được đối xử công bằng như nhau. Bộ nén này cũng được nhóm em lưu thành một file tĩnh (`pairwise_scaler.pkl`) để có thể chuẩn hóa dữ liệu real-time một cách đồng bộ mỗi khi App gọi API ạ."
+
+---
+
+## 🧬 CÂU HỎI 18: TÍNH KHÁCH QUAN KHOA HỌC CỦA CÁC YẾU TỐ ĐÁNH GIÁ
+
+👨‍🏫 **Hội đồng hỏi:** *"Nhóm em lấy cơ sở nào để đưa ra các quy tắc đánh giá tương thích (như quy tắc tuổi tác, quy tắc phong cách chơi)? Làm sao để chắc chắn đây không phải là ý kiến chủ quan của nhóm?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ các tính năng (Features) của mô hình không do nhóm em tự bịa ra, mà được thiết kế dựa trên các lý thuyết Xã hội học, Tâm lý học và Toán học kinh điển đã được chứng minh. Cụ thể:
+1. **Tuổi tác & Mục đích:** Dựa trên *Homophily Theory* (Thuyết Đồng chất - McPherson 2001) khẳng định con người dễ kết nối với người giống mình.
+2. **Khoảng cách:** Dựa trên *Proximity Effect* (Hiệu ứng Tiệm cận - Festinger 1950) chứng minh khoảng cách địa lý tỷ lệ thuận với tương tác xã hội.
+3. **Kỹ năng (Rank, Winrate):** Kế thừa hệ thống *SBMM & Hệ số Elo* của Arpad Elo (1978).
+4. **Phong cách chơi:** Dựa trên *Self-Categorization Theory* (Thuyết Tự phân loại - Turner 1987) về sự phân cực nhóm xã hội.
+5. **Độ uy tín (Verified/Premium):** Ứng dụng *Signaling Theory* (Lý thuyết Tín hiệu của Michael Spence - đoạt giải Nobel 2001) về việc dùng tín hiệu tốn kém để chứng minh sự cam kết.
+Sự hậu thuẫn khoa học này đảm bảo cho hệ thống GameNect AI tính khách quan tuyệt đối ạ."
+
+---
+
+## 📊 CÂU HỎI 19: CHI TIẾT SO SÁNH THUẬT TOÁN & KẾT QUẢ TRAINING THỰC TẾ
+
+👨‍🏫 **Hội đồng hỏi:** *"Em đã so sánh thuật toán của em với những thuật toán nào? Và kết quả cuối cùng trên dữ liệu thực tế là bao nhiêu?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ nhóm em đã chạy thử nghiệm chéo 5 lớp (5-Fold CV) để so sánh trực tiếp 4 mô hình: 
+1. **Baseline Dummy** (Làm mốc tối thiểu)
+2. **Logistic Regression**
+3. **Random Forest** 
+4. **Gradient Boosting**
+(Ngoài ra tụi em cũng có xây một model Deep Learning phức tạp dùng ResNet, nhưng bị loại vì quá tốn tài nguyên và hoạt động như một hộp đen).
+
+**Gradient Boosting** là thuật toán thắng cuộc. Trên báo cáo train gần nhất với tập Test ngẫu nhiên 2000 cặp, model đạt **Độ chính xác (Accuracy) 84%** và **ROC-AUC lên tới 0.9123**.
+Đặc biệt khi dùng công cụ SHAP phân tích lại, bản thân AI cũng tự nhận định 3 yếu tố quan trọng nhất giúp nó dự đoán đúng là: *Điểm cốt lõi (`compat_factor_score`), Khớp giới tính (`gender_match`), và Khớp độ tuổi (`age_preference_match`)*. Kết quả này phản ánh AI đang mô phỏng cực kỳ tốt suy nghĩ con người ạ."
+
+---
+
+## 🏗 CÂU HỎI 20: NGUỒN DỮ LIỆU & PHƯƠNG PHÁP XÂY DỰNG DATASET (HYBRID APPROACH)
+
+👨‍🏫 **Hội đồng hỏi:** *"Data set của nhóm lấy ở đâu ra và làm sao có đủ dữ liệu để train?"*
+
+* 🛡️ **Hướng trả lời:**
+1. **Nguồn Dữ Liệu:** Toàn bộ dữ liệu được trích xuất trực tiếp từ **Firebase Firestore** của ứng dụng, bao gồm `users` (hồ sơ), `swipe_history` (lịch sử vuốt), và `matches` (lịch sử ghép đôi).
+2. **Xây dựng Dataset (Hybrid Approach):** Để có đủ ~8000 mẫu train, hệ thống chia làm 2 phase:
+   - **Phase 1 (Dữ liệu thật):** Bóc tách các cặp đã tương tác thật trên app.
+   - **Phase 2 (Synthetic Augmentation):** Sinh thêm dữ liệu giả lập bằng cách ghép ngẫu nhiên những cặp chưa tương tác, dùng các luật logic chặt chẽ (như cách xa > 300km, chênh > 20 tuổi) để chọn ra những mẫu "chắc chắn hợp" hoặc "chắc chắn không hợp". Điều này giúp giải quyết bài toán thiếu data lúc đầu.
+
+---
+
+## ⚖️ CÂU HỎI 21: CƠ CHẾ GÁN NHÃN CÓ TRỌNG SỐ (WEIGHTED LABELING)
+
+👨‍🏫 **Hội đồng hỏi:** *"Hệ thống gán nhãn dữ liệu (Labeling) thủ công hay tự động? Tại sao lại có khái niệm 'Trọng số' (Weight) ở đây?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ hệ thống dùng cơ chế tự động gán nhãn dựa trên **Cường độ tín hiệu tương tác (Weighted Multi-Signal Labeling)**:
+1. **Quẹt trái (Dislike):** Nhãn 0, Trọng số (Weight) = 1.0.
+2. **Quẹt phải (Like):** Nhãn 1, Trọng số = 1.0.
+3. **Match nhưng hủy (Cancelled):** Nhãn 1, Trọng số = 0.8 (vì độ tin cậy bị giảm do họ hủy).
+4. **Match thành công (Confirmed):** Nhãn 1, Trọng số = 2.0 (tín hiệu tương hỗ mạnh nhất).
+5. **Dữ liệu giả lập (Synthetic):** Trọng số chỉ là 0.5.
+Nhờ việc phạt/thưởng trọng số này, thuật toán Gradient Boosting hiểu được đâu là 'chuẩn mực lý tưởng' để tối ưu hóa hàm loss, phản ánh chính xác thói quen người dùng thay vì cào bằng mọi tương tác ạ."
+
+---
+
+## 🧹 CÂU HỎI 22: TIỀN XỬ LÝ DỮ LIỆU (DATA PREPROCESSING)
+
+👨‍🏫 **Hội đồng hỏi:** *"Trước khi nạp vào AI, hệ thống của em đã tiền xử lý dữ liệu (Preprocessing) như thế nào?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ Pipeline tiền xử lý của em gồm 3 bước lõi:
+1. **Ép kiểu & Khởi tạo mặc định (Fallback values):** Chuyển đổi dữ liệu JSON từ Firebase sang định dạng số. Nếu thiếu trường, gán giá trị an toàn (ví dụ: thiếu khoảng cách GPS -> gán mặc định 500km, thiếu ngày online -> gán 999 ngày).
+2. **Xử lý ngoại lai bằng Logarit (Log Transformation):** Các biến số mạng xã hội như `likeCount`, `playTime` thường bị lệch cực đoan (có người chơi 10h, có người chơi 2000h). Em dùng hàm `np.log1p` để nén đồ thị về dạng phân phối chuẩn (Normal Distribution), giúp AI không bị choáng ngợp bởi các con số khổng lồ.
+3. **Chuẩn hóa Z-Score (StandardScaler):** Nén toàn bộ 62 features (từ số km, số tuổi đến winrate) về cùng một hệ quy chiếu chung (Mean = 0, Std = 1). Bộ nén này được lưu lại thành file tĩnh (`pairwise_scaler.pkl`) để áp dụng y hệt cho dữ liệu trực tiếp khi người dùng mới gọi API."
+
+---
+
+## 🕵️ CÂU HỎI 23: XỬ LÝ DỮ LIỆU KHUYẾT THIẾU (MISSING DATA)
+
+👨‍🏫 **Hội đồng hỏi:** *"Trong thực tế, người dùng rất lười điền thông tin (Missing Data). Vậy với một profile thiếu nhiều trường, mô hình 62 features của em xử lý làm sao, có bị lỗi (crash) không?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ hoàn toàn không crash ạ. Em xử lý triệt để qua 3 lớp:
+1. **Khuyết giá trị cục bộ:** Lệnh `fillna(0)` ở cấp DataFrame sẽ gom dọn toàn bộ các thông số Null còn sót lại thành 0 trước khi nạp vào mô hình.
+2. **Sức mạnh của Gradient Boosting:** Thuật toán Tree-based có cơ chế tự động học cách đi theo nhánh tối ưu nhất khi gặp dữ liệu Null mà không cần nội suy (Impute) bằng Mean/Median gây méo mó dữ liệu như Logistic Regression.
+3. **Biến 'Sự lười biếng' thành Feature:** Em tạo ra biến `avg_completeness` (độ hoàn thiện profile). Ai điền đủ thì điểm uy tín cao, ai lười điền sẽ bị trừ điểm tương thích. Nhờ đó mô hình đánh giá đúng bản chất người dùng ạ."
+
+---
+
+## 📉 CÂU HỎI 24: ĐA CỘNG TUYẾN (MULTICOLLINEARITY) & GIẢM CHIỀU DỮ LIỆU
+
+👨‍🏫 **Hội đồng hỏi:** *"Mô hình có tận 62 features, chắc chắn có Đa cộng tuyến (Multicollinearity). Tại sao em không dùng PCA để nén và giảm chiều dữ liệu?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ nhóm em quyết định **KHÔNG dùng PCA**, vì 2 lý do:
+1. **Mất khả năng giải thích (Explainability):** PCA chiếu nén dữ liệu sang hệ tọa độ mới làm mất tên gốc của các biến. Hệ thống sẽ biến thành 'Hộp Đen' và biểu đồ SHAP không thể giải thích lý do tại sao AI quyết định ghép đôi (Rất khó debug).
+2. **Thuật toán Tree-based miễn nhiễm đa cộng tuyến:** Khác với Hồi quy tuyến tính, Gradient Boosting không bị ảnh hưởng xấu bởi đa cộng tuyến. Nếu cây quyết định đã rẽ nhánh theo 'Số lượt Like', nó sẽ tự động bỏ qua 'Số lượt Match' nếu thông tin bị trùng, do đó không gây nhiễu trọng số ạ."
+
+---
+
+## 🚀 CÂU HỎI 25: KIỂM ĐỊNH THỰC TẾ (ONLINE VS OFFLINE EVALUATION)
+
+👨‍🏫 **Hội đồng hỏi:** *"Các con số AUC 0.96 chỉ là Offline Evaluation. Làm sao chứng minh AI thực sự hiệu quả khi người dùng thực xài (Online Evaluation)?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ để chứng minh tính hiệu quả thực tế, nhóm áp dụng phương pháp **A/B Testing**:
+Hệ thống chia người dùng làm 2 nhóm: Nhóm A (dùng thuật toán random/lọc cơ sở) và Nhóm B (dùng AI Machine Learning). 
+Thước đo chiến thắng (North Star Metric) không phải là điểm AUC, mà là **Tỷ lệ Click-Through Rate (CTR)** (tần suất vuốt Phải) và **Tỷ lệ tạo ra Tin nhắn đầu tiên (First-message Rate)** trên App. Nếu Nhóm B chốt được nhiều cặp đôi nhắn tin hơn Nhóm A, thì lúc đó mô hình AI mới thực sự thành công về mặt Sản phẩm (Product-wise) ạ."

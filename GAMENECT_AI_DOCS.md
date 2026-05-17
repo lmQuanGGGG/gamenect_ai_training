@@ -219,42 +219,69 @@ km = 6371 · c
 | # | Feature | Ý Nghĩa | Loại |
 |---|---------|---------|------|
 | 1 | `age_diff` | Chênh lệch tuổi tuyệt đối | Numeric |
-| 2 | `age_compatible` | age_diff ≤ 5 | Binary |
-| 3 | `age_within_10` | age_diff ≤ 10 | Binary |
-| 4 | `distance_km` | Khoảng cách geodesic (km, max 1000) | Numeric |
-| 5 | `distance_within_10km` | dist ≤ 10 km | Binary |
-| 6 | `distance_within_50km` | dist ≤ 50 km | Binary |
-| 7 | `distance_within_100km` | dist ≤ 100 km | Binary |
-| 8 | `gender_match` | Cả 2 đều match giới tính sở thích | Binary |
-| 9 | `one_way_gender_match` | Ít nhất 1 bên match | Binary |
-| 10 | `same_game_style` | Cùng phong cách chơi | Binary |
-| 11 | `compatible_game_style` | Phong cách tương thích (theo bảng) | Binary |
-| 12 | `win_rate_diff` | Chênh lệch tỉ lệ thắng (%) | Numeric |
-| 13 | `similar_skill` | win_rate_diff ≤ 20 | Binary |
-| 14 | `same_rank` | Cùng rank | Binary |
-| 15 | `play_time_ratio` | min/max play_time (0–1) | Numeric |
-| 16 | `both_active` | Cả 2 chơi > 1000h | Binary |
-| 17 | `both_premium` | Cả 2 là Premium | Binary |
-| 18 | `both_verified` | Cả 2 đã Verified | Binary |
-| 19 | `avg_profile_completeness` | TB độ hoàn thiện profile (0–1) | Numeric |
-| 20 | `interest_count_similarity` | Tương đồng số sở thích | Numeric |
-| 21 | `game_count_similarity` | Tương đồng số game yêu thích | Numeric |
-| 22 | `same_looking_for` | Cùng mục đích tìm kiếm | Binary |
-| 23 | `user1_popularity` | Độ phổ biến user 1 (max 10) | Numeric |
-| 24 | `user2_popularity` | Độ phổ biến user 2 (max 10) | Numeric |
-| 25 | `popularity_balance` | Cân bằng độ phổ biến (1-diff) | Numeric |
-| 26 | `height_diff` | Chênh lệch chiều cao (cm) | Numeric |
-| 27 | `height_compatible` | height_diff ≤ 15 cm | Binary |
-| 28 | `age_preference_match` | Tuổi cả 2 nằm trong range của nhau | Binary |
-| 29 | `one_way_age_match` | Ít nhất 1 bên tuổi trong range | Binary |
-| 30 | `distance_preference_match` | Khoảng cách trong maxDistance cả 2 | Binary |
-| 31 | `one_way_distance_match` | Ít nhất 1 bên trong maxDistance | Binary |
-| 32 | `deal_breaker_count` | Số lượng điều kiện vi phạm (0–3) | Numeric |
-| 33 | `has_deal_breakers` | deal_breaker_count > 0 | Binary |
-| 34 | `compatibility_factor_score` | Tổng hợp 7 yếu tố chính (0–1) | Numeric |
-| 35 | `activity_gap` | \|log(playtime1) - log(playtime2)\| | Numeric |
-| 36 | `avg_engagement` | TB (views + likes + matches) / 3 | Numeric |
-*(Danh sách chi tiết gồm 62 thông số từ tuổi, rank, khoảng cách vị trí đến cả mức độ tương tác như lượng Match hay lượng Like trên tổng quan nền tảng).*
+| 2 | `age_compatible_5` | Chênh lệch tuổi ≤ 5 | Binary |
+| 3 | `age_compatible_8` | Chênh lệch tuổi ≤ 8 | Binary |
+| 4 | `age_compatible_12` | Chênh lệch tuổi ≤ 12 | Binary |
+| 5 | `age_pref_match` | Cả 2 nằm trong gu tuổi của nhau | Binary |
+| 6 | `age_pref_one_way` | Ít nhất 1 bên trong gu tuổi | Binary |
+| 7 | `distance_km` | Khoảng cách thực tế (km) | Numeric |
+| 8 | `dist_within_5km` | Khoảng cách ≤ 5km | Binary |
+| 9 | `dist_within_20km` | Khoảng cách ≤ 20km | Binary |
+| 10 | `dist_within_50km` | Khoảng cách ≤ 50km | Binary |
+| 11 | `dist_within_100km` | Khoảng cách ≤ 100km | Binary |
+| 12 | `dist_pref_match` | Khớp giới hạn khoảng cách 2 chiều | Binary |
+| 13 | `dist_pref_one_way` | Khớp giới hạn khoảng cách 1 chiều | Binary |
+| 14 | `gender_match` | Khớp xu hướng giới tính 2 chiều | Binary |
+| 15 | `gender_one_way` | Khớp xu hướng giới tính 1 chiều | Binary |
+| 16 | `same_gender` | Cùng giới tính | Binary |
+| 17 | `win_rate_diff` | Chênh lệch tỷ lệ thắng | Numeric |
+| 18 | `skill_similar_15` | Chênh lệch win rate ≤ 15% | Binary |
+| 19 | `skill_similar_25` | Chênh lệch win rate ≤ 25% | Binary |
+| 20 | `same_rank` | Cùng rank | Binary |
+| 21 | `can_mentor_12` | User 1 có thể làm Mentor cho User 2 | Binary |
+| 22 | `can_mentor_21` | User 2 có thể làm Mentor cho User 1 | Binary |
+| 23 | `has_mentor_relation` | Có quan hệ Mentor | Binary |
+| 24 | `same_game_style` | Cùng phong cách chơi | Binary |
+| 25 | `compat_style` | Phong cách tương thích | Binary |
+| 26 | `role_compatibility` | Điểm tương thích vai trò | Numeric |
+| 27 | `complementary_roles` | Vai trò bù trừ hoàn hảo | Binary |
+| 28 | `shared_game_count` | Số game chung | Numeric |
+| 29 | `shared_game_jaccard` | Hệ số Jaccard game chung | Numeric |
+| 30 | `has_common_game` | Có game chung | Binary |
+| 31 | `shared_interest_count` | Số sở thích chung | Numeric |
+| 32 | `shared_interest_jaccard` | Hệ số Jaccard sở thích | Numeric |
+| 33 | `has_common_interest` | Có sở thích chung | Binary |
+| 34 | `same_looking_for` | Cùng mục đích tìm kiếm | Binary |
+| 35 | `play_time_ratio` | Tỷ lệ giờ chơi | Numeric |
+| 36 | `both_active_1000h` | Cả 2 chơi > 1000h | Binary |
+| 37 | `activity_gap_log` | Độ lệch hoạt động (log) | Numeric |
+| 38 | `avg_completeness` | TB độ hoàn thiện profile | Numeric |
+| 39 | `completeness_diff` | Chênh lệch độ hoàn thiện | Numeric |
+| 40 | `avg_like_count` | TB lượng like (log) | Numeric |
+| 41 | `avg_match_count` | TB lượng match (log) | Numeric |
+| 42 | `avg_profile_views` | TB lượng xem profile (log) | Numeric |
+| 43 | `avg_friend_count` | TB lượng bạn bè (log) | Numeric |
+| 44 | `popularity_gap` | Chênh lệch độ nổi tiếng | Numeric |
+| 45 | `match_rate_u1` | Tỷ lệ match User 1 | Numeric |
+| 46 | `match_rate_u2` | Tỷ lệ match User 2 | Numeric |
+| 47 | `avg_match_rate` | TB tỷ lệ match | Numeric |
+| 48 | `avg_super_likes` | TB lượng super like | Numeric |
+| 49 | `both_verified` | Cả 2 đã xác minh | Binary |
+| 50 | `either_verified` | Có ít nhất 1 người xác minh | Binary |
+| 51 | `both_premium` | Cả 2 dùng Premium | Binary |
+| 52 | `either_premium` | Có ít nhất 1 người dùng Premium | Binary |
+| 53 | `both_show_online` | Cả 2 đều hiện trạng thái | Binary |
+| 54 | `days_since_seen_u1` | Số ngày offline User 1 | Numeric |
+| 55 | `days_since_seen_u2` | Số ngày offline User 2 | Numeric |
+| 56 | `both_active_7d` | Cả 2 active trong 7 ngày | Binary |
+| 57 | `both_active_30d` | Cả 2 active trong 30 ngày | Binary |
+| 58 | `either_online` | Có người đang online | Binary |
+| 59 | `both_online` | Cả 2 đang online | Binary |
+| 60 | `deal_breaker_count` | Số lượng deal breaker | Numeric |
+| 61 | `has_deal_breakers` | Có deal breaker | Binary |
+| 62 | `compat_factor_score` | Điểm mỏ neo tổng hợp | Numeric |
+
+*(Đây là danh sách chi tiết gồm 62 thông số thực tế được trích xuất từ code v3.0).*
 
 **Bảng tương thích phong cách game:**
 
@@ -273,7 +300,7 @@ Vừa chơi   ↔ Casual, Vừa chơi vừa học, Streamer
 
 ### 4.2 Chuẩn Hóa (Normalization)
 
-Sau khi tạo 37 features, toàn bộ được **chuẩn hóa bằng `StandardScaler`**:
+Sau khi tạo 62 features, toàn bộ được **chuẩn hóa bằng `StandardScaler`**:
 
 ```
 X_scaled = (X - μ) / σ

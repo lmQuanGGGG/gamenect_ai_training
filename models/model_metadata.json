@@ -1,6 +1,6 @@
 {
   "version": "3.0.0",
-  "trained_at": "2026-04-21T03:40:14.252291",
+  "trained_at": "2026-05-17T09:22:51.877117",
   "data_source": "Firebase Firestore — All collections",
   "training_strategy": "Hybrid weighted: all signals (swipe+match+profile) + clear synthetic",
   "model_type": "GradientBoostingClassifier",
