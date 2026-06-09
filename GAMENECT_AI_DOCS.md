@@ -176,7 +176,7 @@ Dự án có **hai cách** encode data thành vector, dùng cho hai model khác 
 
 | Field | Phương thức | Giá trị |
 |-------|------------|---------|
-| `rank` | Label encoding | Gà Mờ=0 → Thượng Đế AFK=6 |
+| `rank` | Label encoding | Gà Mờ=0 → Thách đấu=14 |
 | `gender` | Label encoding | Nam=0, Nữ=1, Khác=2 |
 | `age` | Numeric raw | float |
 | `height` | Numeric raw | float |
@@ -199,7 +199,7 @@ shared_games      = |games(u1) ∩ games(u2)| / 10.0
 shared_interests  = |interests(u1) ∩ interests(u2)| / 10.0
 distance          = haversine_km / 500.0  (giới hạn ở 1.0)
 age_gap           = |age1 - age2| / 50.0
-rank_gap          = |rank1 - rank2| / 7.0
+rank_gap          = |rank1 - rank2| / 15.0
 ```
 
 **Khoảng cách tính bằng Haversine:**

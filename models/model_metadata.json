@@ -1,15 +1,15 @@
 {
   "version": "3.0.0",
-  "trained_at": "2026-05-17T09:22:51.877117",
+  "trained_at": "2026-06-10T00:32:49.804504",
   "data_source": "Firebase Firestore — All collections",
   "training_strategy": "Hybrid weighted: all signals (swipe+match+profile) + clear synthetic",
   "model_type": "GradientBoostingClassifier",
   "best_params": {
-    "clf__subsample": 0.9,
+    "clf__subsample": 0.8,
     "clf__n_estimators": 200,
     "clf__min_samples_split": 20,
-    "clf__min_samples_leaf": 5,
-    "clf__max_depth": 5,
+    "clf__min_samples_leaf": 10,
+    "clf__max_depth": 7,
     "clf__learning_rate": 0.05
   },
   "feature_count": 62,
@@ -78,11 +78,11 @@
     "compat_factor_score"
   ],
   "dataset": {
-    "total_pairs": 6313,
-    "real_pairs": 2614,
-    "synthetic_pairs": 3699,
-    "positive_rate": 0.3202914620624109,
-    "signals_count": 2617
+    "total_pairs": 6959,
+    "real_pairs": 3069,
+    "synthetic_pairs": 3890,
+    "positive_rate": 0.387124586865929,
+    "signals_count": 3340
   },
   "signals_used": {
     "swipe_history": "335 records — like=1/dislike=0, weight=1.0",

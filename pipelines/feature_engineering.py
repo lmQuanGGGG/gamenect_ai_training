@@ -16,6 +16,14 @@ class FeatureEngineer:
             "Quái vật cân team": 4,
             "Trùm Cuối": 5,
             "Thượng Đế AFK": 6,
+            "Đồng": 7,
+            "Bạc": 8,
+            "Vàng": 9,
+            "Bạch kim": 10,
+            "Kim cương": 11,
+            "Cao thủ": 12,
+            "Đại cao thủ": 13,
+            "Thách đấu": 14,
         }
         self.gender_map = {"Nam": 0, "Nữ": 1, "Khác": 2}
         self.game_style_map = {

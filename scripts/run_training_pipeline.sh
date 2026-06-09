@@ -19,3 +19,4 @@ python scripts/test_user_model.py
 echo -e "\n=========================================="
 echo "Pipeline completed successfully!"
 echo "=========================================="
+ 

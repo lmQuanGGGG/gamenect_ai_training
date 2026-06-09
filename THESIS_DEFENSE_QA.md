@@ -265,7 +265,20 @@ Sự hậu thuẫn khoa học này đảm bảo cho hệ thống GameNect AI tí
 1. **Nguồn Dữ Liệu:** Toàn bộ dữ liệu được trích xuất trực tiếp từ **Firebase Firestore** của ứng dụng, bao gồm `users` (hồ sơ), `swipe_history` (lịch sử vuốt), và `matches` (lịch sử ghép đôi).
 2. **Xây dựng Dataset (Hybrid Approach):** Để có đủ ~8000 mẫu train, hệ thống chia làm 2 phase:
    - **Phase 1 (Dữ liệu thật):** Bóc tách các cặp đã tương tác thật trên app.
-   - **Phase 2 (Synthetic Augmentation):** Sinh thêm dữ liệu giả lập bằng cách ghép ngẫu nhiên những cặp chưa tương tác, dùng các luật logic chặt chẽ (như cách xa > 300km, chênh > 20 tuổi) để chọn ra những mẫu "chắc chắn hợp" hoặc "chắc chắn không hợp". Điều này giúp giải quyết bài toán thiếu data lúc đầu.
+   - **Phase 2 (Synthetic Augmentation - Tăng cường dữ liệu mô phỏng):** Để giải quyết bài toán thiếu hụt dữ liệu (Cold-Start) ở giai đoạn đầu, hệ thống tiến hành ghép cặp ngẫu nhiên các tài khoản chưa từng tương tác thực tế và áp dụng bộ quy tắc logic phân loại nghiêm ngặt (**Deterministic Rules**) để tự động dán nhãn:
+     * **Nhãn 1 (Chắc chắn hợp - Clearly Compatible):** Thỏa mãn đồng thời cả 4 điều kiện khắt khe: Không có điểm bất tương đồng cốt lõi (`deal_breaker_count == 0` - khớp giới tính, khớp độ tuổi yêu cầu, khớp khoảng cách yêu cầu), Chỉ số tương thích nền tảng cao (`compat_factor_score >= 0.75`), Có chơi chung ít nhất 1 tựa game (`has_common_game == 1`), và Khoảng cách địa lý gần (`distance_km <= 50`).
+     * **Nhãn 0 (Chắc chắn không hợp - Clearly Incompatible):** Chỉ cần thỏa mãn một trong các điều kiện cực đoan sau: Có từ 2 điểm bất tương đồng cốt lõi trở lên (`deal_breaker_count >= 2`), Khoảng cách địa lý quá xa (`distance_km > 300`), Chênh lệch tuổi quá lớn (`age_diff > 20`), hoặc Chênh lệch trình độ quá sâu mà không có quan hệ chỉ dẫn (`win_rate_diff > 45` và `has_mentor_relation == 0`).
+     * Tất cả các mẫu Synthetic này đều bị ép trọng số thấp (**`weight = 0.5`**) để đảm bảo mô hình luôn ưu tiên học từ dữ liệu thực tế của người dùng.
+3. **Bảo vệ tính khách quan khoa học của các ngưỡng dán nhãn (Nhãn 0 / Nhãn 1):**
+   Để chứng minh các ngưỡng này không mang tính chất "cảm tính chủ quan", nhóm đã đối chiếu chặt chẽ với các học thuyết kinh điển:
+   - **Với Nhãn 0 (Chắc chắn không hợp):**
+     * *Khoảng cách > 300km:* Theo **Hiệu ứng Tiệm cận (Proximity Effect - Festinger 1950)**, khoảng cách địa lý quá lớn làm tăng chi phí cơ hội giao tiếp xã hội lên cực đại, đưa xác suất tương tác thực tế hoặc gặp gỡ ngoại tuyến về tiệm cận 0.
+     * *Chênh lệch tuổi > 20 tuổi:* Theo **Thuyết Đồng chất về vòng đời (Life-stage Homophily - McPherson 2001)**, sự lệch pha thế hệ này tạo ra bối cảnh sống, trách nhiệm xã hội và văn hóa chơi game hoàn toàn khác biệt, triệt tiêu động lực kết bạn tự nguyện.
+     * *Chênh lệch trình độ > 45% (không có Mentor):* Theo **Thuyết dòng chảy (Flow Theory - Mihaly Csikszentmihalyi 1990)**, sự mất cân bằng kỹ năng cực đoan phá vỡ trạng thái trải nghiệm game tối ưu (người quá giỏi sẽ thấy chán, người quá kém sẽ thấy áp lực/ức chế), làm giảm sự hài lòng tương tác.
+   - **Với Nhãn 1 (Chắc chắn hợp):**
+     * Kết hợp đồng thời **Thuyết Đồng chất (Homophily Theory)** và **Lý thuyết Lựa chọn Hợp lý (Rational Choice Theory)** để đảm bảo sự tương hợp tối đa trên các khía cạnh tương tác (không vướng bộ lọc cấm của người dùng, có game chung làm cầu nối cốt lõi và vị trí địa lý thuận lợi).
+
+
 
 ---
 
@@ -327,3 +340,19 @@ Nhờ việc phạt/thưởng trọng số này, thuật toán Gradient Boosting
 "Dạ để chứng minh tính hiệu quả thực tế, nhóm áp dụng phương pháp **A/B Testing**:
 Hệ thống chia người dùng làm 2 nhóm: Nhóm A (dùng thuật toán random/lọc cơ sở) và Nhóm B (dùng AI Machine Learning). 
 Thước đo chiến thắng (North Star Metric) không phải là điểm AUC, mà là **Tỷ lệ Click-Through Rate (CTR)** (tần suất vuốt Phải) và **Tỷ lệ tạo ra Tin nhắn đầu tiên (First-message Rate)** trên App. Nếu Nhóm B chốt được nhiều cặp đôi nhắn tin hơn Nhóm A, thì lúc đó mô hình AI mới thực sự thành công về mặt Sản phẩm (Product-wise) ạ."
+
+---
+
+## 📊 CÂU HỎI 26: PHƯƠNG PHÁP SINH DỮ LIỆU LAI THỰC NGHIỆM (EXPERIMENTAL HYBRID DATA GENERATION METHODOLOGY)
+
+👨‍🏫 **Hội đồng hỏi:** *"Làm sao nhóm đảm bảo tính khách quan và loại bỏ hoàn toàn tính chủ quan khi xây dựng dữ liệu người dùng mô phỏng để kiểm thử hệ thống khuyến nghị?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ thưa hội đồng, để đảm bảo tính khách quan và loại bỏ hoàn toàn tính chủ quan trong quá trình mô phỏng môi trường kiểm thử cho hệ thống khuyến nghị (Recommendation System), nghiên cứu này áp dụng **Phương pháp sinh dữ liệu lai thực nghiệm (Experimental Hybrid Data Generation Methodology)**.
+
+Dữ liệu người dùng được nhóm xây dựng dựa trên sự kết hợp chặt chẽ giữa hai nguồn lực:
+1. **Dữ liệu phân bổ thực tế:** Lấy trực tiếp qua API thời gian thực từ **RAWG API** (cho thông tin game) và cơ sở dữ liệu tên thật Việt Nam (**GitHub Namedb**).
+2. **Mô hình hóa toán học có trọng số địa lý:** Áp dụng thuật toán tính toán và phân bổ tọa độ địa lý dựa trên số liệu phân bổ dân cư của **Tổng cục Thống kê GSO**.
+
+Sự kết hợp này đảm bảo tập dữ liệu mô phỏng tiệm cận 100% cấu trúc hành vi người dùng thật trong thực tế Việt Nam, giúp việc huấn luyện và đánh giá mô hình học máy (Machine Learning) đạt độ chính xác cao nhất và tính khách quan khoa học cao nhất thưa thầy cô."
+
