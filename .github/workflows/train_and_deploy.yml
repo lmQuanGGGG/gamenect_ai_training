@@ -33,11 +33,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install pandas numpy scikit-learn scipy matplotlib seaborn protobuf firebase-admin requests python-dotenv pyyaml fastapi uvicorn pydantic rich joblib geopy shap
 
-    - name: Setup Firebase credentials
+    - name: Setup Credentials & Envs
       run: |
         echo '${{ secrets.FIREBASE_KEY }}' > firebase-key.json
         echo "FIREBASE_CREDENTIALS_PATH=./firebase-key.json" >> .env
         echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env
+        echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+        echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
 
     - name: Collect data from Firebase
       run: |

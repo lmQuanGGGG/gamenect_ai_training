@@ -48,12 +48,48 @@ def main():
         shutil.copy(raw_dir / 'users.json', backup_file)
         print(f"\nBackup saved to {backup_file}")
     
+    import json
+    import time
+    from services.telegram_logger import telegram_logger
+    
+    users_count = 0
+    matches_count = 0
+    total_records = 0
+    
+    if (raw_dir / 'users.json').exists():
+        with open(raw_dir / 'users.json', 'r') as f:
+            data = json.load(f)
+            users_count = len(data)
+            total_records += users_count
+            
+    if (raw_dir / 'matches.json').exists():
+        with open(raw_dir / 'matches.json', 'r') as f:
+            data = json.load(f)
+            matches_count = len(data)
+            total_records += matches_count
+            
+    if (raw_dir / 'swipes.json').exists():
+        with open(raw_dir / 'swipes.json', 'r') as f:
+            data = json.load(f)
+            matches_count += len(data)
+            total_records += len(data)
+
     print("\n" + "="*60)
     print("DATA COLLECTION COMPLETED")
     print("Files created:")
     for name, path in outputs.items():
         print(f"  - {name}: {path}")
     print("="*60)
+    
+    # Gửi Telegram Report
+    try:
+        global start_time
+        time_taken = time.time() - start_time
+    except NameError:
+        time_taken = 0.0
+    telegram_logger.log_data_sync(users_count, matches_count, time_taken, total_records)
 
 if __name__ == "__main__":
+    import time
+    start_time = time.time()
     main()

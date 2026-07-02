@@ -731,10 +731,17 @@ def save_model(model, scaler, feature_names, best_params, y, dataset_info, auc_s
 # ══════════════════════════════════════════════════════════════════════
 
 def main():
+    import time
+    from services.telegram_logger import telegram_logger
+    
+    start_time = time.time()
+    
     print("\n" + "█" * 65)
     print("█  GAMENECT AI — REAL DATA PIPELINE v3.0                   █")
     print("█  Using ALL Firebase signals: swipe + match + profile      █")
     print("█" * 65 + "\n")
+
+    telegram_logger.log_training_start("GAMENECT_AI_V3.0", config={"pipeline": "v3.0", "target_total": 8000, "signals": "swipe+match"})
 
     # 1. Load
     users, swipe_hist, swipe_latest, matches = load_all_data()
@@ -773,14 +780,16 @@ def main():
     generate_plots(model, feature_names, X_tr, y_tr, X_te_sc, y_te, y_pred, y_prob)
 
     # 7.5 Automated Gating (Tiêu chí thay thế model)
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score, accuracy_score
     auc_score = roc_auc_score(y_te, y_prob)
+    acc_score = accuracy_score(y_te, y_pred)
     print("\n" + "=" * 65)
     print(f"🛡️ AUTOMATED GATING CHECK (Threshold AUC >= 0.75)")
     print("=" * 65)
     if auc_score < 0.75:
         print(f"❌ REJECTED: Model AUC ({auc_score:.4f}) is below threshold (0.75)!")
         print("❌ Canceled saving model and deploying. Exiting with error code 1.")
+        telegram_logger.log_alert(f"Quá trình Training thất bại! Gating bị từ chối do AUC thấp ({auc_score:.4f} < 0.75)")
         sys.exit(1)
     else:
         print(f"✅ PASSED: Model AUC ({auc_score:.4f}) meets the threshold.")
@@ -796,6 +805,19 @@ def main():
         "signals_count":     len(labels),
     }
     save_model(model, scaler, feature_names, best_params, y, dataset_info, auc_score)
+
+    time_taken = time.time() - start_time
+    telegram_logger.log_training_end(
+        version="3.0.0",
+        time_taken=time_taken,
+        total_pairs=len(y),
+        train_size=len(y_tr),
+        test_size=len(y_te),
+        auc=auc_score,
+        acc=acc_score,
+        status="PASSED (Auto-Gating)" if auc_score >= 0.75 else "REJECTED (Low AUC)",
+        filepath="models/pairwise_compatibility_model.pkl"
+    )
 
     print("\n" + "█" * 65)
     print("█  TRAINING v3.0 COMPLETED                                  █")
