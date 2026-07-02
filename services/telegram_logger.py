@@ -44,7 +44,8 @@ class TelegramLogger:
         )
         self._send_message(text)
 
-    def log_training_end(self, version: str, time_taken: float, total_pairs: int, train_size: int, test_size: int, auc: float, acc: float, status: str, filepath: str):
+    def log_training_end(self, version: str, time_taken: float, total_pairs: int, train_size: int, test_size: int, auc: float, acc: float, status: str, filepaths: list):
+        files_str = "\n".join([f"   ├─ <code>{os.path.basename(f)}</code>" for f in filepaths])
         text = (
             f"✅ <b>[TRAINING HOÀN TẤT]</b>\n\n"
             f"📦 <b>Version:</b> <code>{version}</code>\n"
@@ -56,7 +57,7 @@ class TelegramLogger:
             f"   ├─ ROC-AUC: <b>{auc:.4f}</b>\n"
             f"   └─ Accuracy: <b>{acc:.4f}</b>\n"
             f"🛡️ <b>Status:</b> <b>{status}</b>\n\n"
-            f"🤖 <b>Checkpoint:</b> <code>{filepath}</code>"
+            f"🤖 <b>Checkpoints:</b>\n{files_str}"
         )
         self._send_message(text)
 

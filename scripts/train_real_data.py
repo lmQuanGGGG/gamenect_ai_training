@@ -823,7 +823,11 @@ def main():
         auc=auc_score,
         acc=acc_score,
         status="PASSED (Auto-Gating)" if auc_score >= 0.75 else "REJECTED (Low AUC)",
-        filepath="models/pairwise_compatibility_model.pkl"
+        filepaths=[
+            str(MODEL_DIR / 'pairwise_compatibility_model.pkl'),
+            str(MODEL_DIR / 'pairwise_scaler.pkl'),
+            str(MODEL_DIR / 'pairwise_feature_names.pkl')
+        ]
     )
 
     print("\n" + "█" * 65)
