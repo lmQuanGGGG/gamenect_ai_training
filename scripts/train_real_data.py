@@ -729,6 +729,7 @@ def save_model(model, scaler, feature_names, best_params, y, dataset_info, auc_s
 # ══════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════
+# Ghi chú: Kích hoạt chạy lại GitHub Actions
 
 def main():
     import time
