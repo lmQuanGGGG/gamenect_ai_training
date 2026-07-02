@@ -781,7 +781,10 @@ def main():
     print("█  Using ALL Firebase signals: swipe + match + profile      █")
     print("█" * 65 + "\n")
 
-    telegram_logger.log_training_start("GAMENECT_AI_V3.0", config={"pipeline": "v3.0", "target_total": 8000, "signals": "swipe+match"})
+    telegram_logger.log_training_start(
+    "GAMENECT_AI_V3.0",
+    config={"pipeline": "v3.0", "target_total": "dynamic_real_x1.3", "signals": "swipe+match"}
+)
 
     # 1. Load
     users, swipe_hist, swipe_latest, matches = load_all_data()
