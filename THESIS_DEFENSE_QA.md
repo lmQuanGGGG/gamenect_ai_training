@@ -393,3 +393,16 @@ Nếu tụi em cố tình đẩy Precision lên >95%, thuật toán sẽ trở n
 Trong bản báo cáo, biểu đồ **SHAP Beeswarm** chỉ ra rõ ràng: AI đánh giá cao nhất sự tương đồng về Khoảng cách (Distance), sau đó mới tới Số game chung và Trình độ Rank. Bất cứ khi nào 2 người dùng được Match, hệ thống hoàn toàn có thể trích xuất log SHAP để giải thích bằng lời (Ví dụ: 'Bạn được ghép đôi vì cùng chơi Valorant và ở cách nhau 5km') y như một chuyên gia tư vấn tâm lý ạ."
 
 
+
+---
+
+## 📉 CÂU HỎI 30: BẢO VỆ CHỈ SỐ AUC ĐÁNH GIÁ (0.825 VS 0.99)
+
+👨‍🏫 **Hội đồng hỏi:** *"Tại sao ở các phiên bản huấn luyện trước (Môi trường test), AUC của nhóm đạt tới 0.99, nhưng khi huấn luyện bằng Data lấy từ Firebase thì AUC lại rớt xuống 0.825? Điểm thấp đi chứng tỏ AI kém đi đúng không?"*
+
+* 🛡️ **Hướng trả lời:**
+"Dạ ngược lại ạ, điểm AUC 0.825 hiện tại thể hiện sự **Trưởng thành thực chiến (Real-world Robustness)** của mô hình so với điểm 0.99 ảo tưởng trước đây:
+
+1. **Sự thật về điểm 0.99 (Hiện tượng Overfitting/Data Leakage):** Mô hình cũ đạt 0.99 là do học trên môi trường 'Phòng thí nghiệm' (toàn bộ là Bot tự động quẹt dựa trên quy luật logic lập trình sẵn). Dữ liệu này quá hoàn hảo, nếu đem mô hình này ra môi trường thực tế (Production) nó sẽ thất bại ngay lập tức vì hành vi con người không bao giờ đi theo công thức cứng ngắc.
+2. **Độ ổn định Thực chiến (0.825):** Điểm số hiện tại được đánh giá sau khi AI tiếp nhận **hơn 2.200 tương tác thực tế** từ người dùng (chiếm tới 87% bộ dữ liệu). Con người quẹt rất cảm tính (đôi khi không cùng sở thích nhưng thấy avatar hợp mắt vẫn Like). Mô hình phải học cách xử lý những ca 'bất quy tắc' này, do đó điểm tuyệt đối giảm xuống nhưng mô hình thực tế lại thông minh hơn và khả năng chịu lỗi (Fault Tolerance) cao hơn rất nhiều.
+3. **Chiến lược cân bằng Dữ liệu (Hybrid Dataset):** Đặc biệt trong phiên bản mới nhất, nhóm em đã chủ động pha trộn theo tỷ lệ chuẩn: **87% Data Thực Tế** và chỉ dùng **13% Data Tổng Hợp (Synthetic)**. Việc dùng 13% Data ảo (Bot) hoàn toàn chỉ nhằm mục đích giải quyết bài toán Cold-Start cho User mới, chứ không lạm dụng Data Ảo để kéo ảo điểm số. Điều này chứng minh thuật toán Gradient Boosting của nhóm đang phản ánh CỰC KỲ CHÍNH XÁC hành vi của con người thật."

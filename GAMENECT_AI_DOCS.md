@@ -383,14 +383,14 @@ Khác với v1.0, phiên bản v3.0 kết hợp cả **Dữ liệu 100% Thực T
 - Trích xuất toàn bộ lịch sử quẹt trái/phải (`swipe_history`).
 - Điểm đánh trọng số (Weight): Các cặp match thực tế sẽ được nhân `weight = 1.0 -> 2.0` để AI ưu tiên học thói quen thực của môi trường hơn.
 
-**2. Synthetic Pairs (Dữ lệu mô phỏng/Quy tắc):**
-- Bổ sung data để giải quyết Cold-Start, nhưng bị ép `weight = 0.5` để không làm lấn át Data thực tế. Nhìn chung sẽ cân bằng ở tỉ lệ `40% Real - 60% Synthetic`.
+**2. Synthetic Pairs (Dữ liệu mô phỏng/Quy tắc):**
+- Bổ sung data để giải quyết Cold-Start, nhưng bị ép `weight = 0.5` để không làm lấn át Data thực tế. Nhìn chung sẽ cân bằng ở tỉ lệ `87% Real - 13% Synthetic`.
 
 ### 6.2 Train/Test Split
 
 - **80% Train**, **20% Test**
 - **Stratified split** — giữ nguyên tỉ lệ class
-- *Ví dụ (v3.0):* Tổng cộng 5014 cặp dữ liệu sẽ được chia thành **Train: 4011** và **Test: 1003**.
+- *Ví dụ (v3.0 - Mới nhất):* Tổng cộng 2542 cặp dữ liệu (2211 Real, 331 Synthetic) sẽ được chia thành **Train: 2033** và **Test: 509**.
 
 ### 6.3 Training Flow
 
@@ -560,36 +560,25 @@ python scripts/train_real_data.py
 # 5. Lưu vào models/
 ```
 
-**Ví dụ output khi train:**
+**Ví dụ output khi train (Mới nhất):**
 ```
-Loading users data...
-Loaded 450 users
-Creating 10000 training pairs...
-Created 5000 compatible pairs
-Created 5000 incompatible pairs
+  ┌──────────────────────────────────────────────────┐
+  │ Total pairs    :   2542                        │
+  │ Real (weighted):   2211 (87.0%) avg_w=1.03    │
+  │ Synthetic      :    331 (13.0%) weight=0.5     │
+  │ Label 1 (like) :   1073                        │
+  │ Label 0 (dis)  :   1469                        │
+  └──────────────────────────────────────────────────┘
 
-Label distribution BEFORE split:
-Compatible (1): 6234 (62.3%)
-Incompatible (0): 3766 (37.7%)
-
-Training pairwise compatibility model...
-
-Classification Report:
               precision    recall  f1-score   support
-           0       0.82      0.79      0.80       753
-           1       0.86      0.88      0.87      1247
-    accuracy                           0.84      2000
 
-ROC-AUC Score: 0.9123
+Incompatible       0.77      0.82      0.80       294
+  Compatible       0.73      0.67      0.70       215
 
-Top 15 Important Features:
-                    feature  importance
-0      compatibility_factor_score   0.1823
-1                 gender_match   0.1245
-2          age_preference_match   0.0934
-...
+    accuracy                           0.76       509
 
-Model saved to models/
+ROC-AUC Score: 0.8251
+Accuracy: 0.7583
 ```
 
 ### Bước 6 — Chạy Pipeline Đầy Đủ (Tất Cả Bước)

@@ -135,18 +135,46 @@ def merge_all_signals(swipe_history, swipe_latest, matches):
     labels   = {}  # (u1, u2) → 0/1
     weights  = {}  # (u1, u2) → float weight
 
+    # ── TROLL PENALTY LOGIC (Anti-Negative Feedback Loop) ──────────────────
+    user_swipe_counts = {}
+    for s in swipe_history + swipe_latest:
+        uid = s.get('userId')
+        action = s.get('action')
+        if not uid or not action: continue
+        if uid not in user_swipe_counts:
+            user_swipe_counts[uid] = {'like': 0, 'dislike': 0}
+        if action in ['like', 'dislike']:
+            user_swipe_counts[uid][action] += 1
+            
+    troll_users = set()
+    for uid, counts in user_swipe_counts.items():
+        total = counts['like'] + counts['dislike']
+        # Chỉ phạt nếu đã quẹt ít nhất 10 người mà vẫn chê > 90%
+        if total >= 10:
+            dislike_ratio = counts['dislike'] / total
+            if dislike_ratio >= 0.90:
+                troll_users.add(uid)
+    
+    if troll_users:
+        print(f"\n  🛡️ TROLL DETECTION: Found {len(troll_users)} users with >90% dislike ratio. Their data will be down-weighted (w=0.2).")
+
     # ── Signal 1+2: Swipe History + Latest ──────────────────────────
     for s in swipe_history + swipe_latest:
-        key    = (s['userId'], s['targetUserId'])
-        action = s['action']
+        key    = (s.get('userId'), s.get('targetUserId'))
+        if not key[0] or not key[1]: continue
+        action = s.get('action')
         lbl    = 1 if action == 'like' else 0
+        
+        # Áp dụng án phạt nếu user là Troll
+        w = 0.2 if key[0] in troll_users else 1.0
+
         # Swipe history = base signal
         if key not in labels:
             labels[key]  = lbl
-            weights[key] = 1.0
+            weights[key] = w
         elif lbl == 1:  # like ghi đè dislike (cập nhật tích cực)
             labels[key]  = 1
-            weights[key] = max(weights[key], 1.0)
+            weights[key] = max(weights[key], w)
 
     # ── Signal 3+4: Matches (Confirmed & Cancelled) ──────────────────
     for m in matches:
@@ -284,7 +312,7 @@ def create_features(u1, u2):
     if sty('Competitive', 'Casual'):              rc = max(rc, 0.7)
     if s1 == s2:                                  rc = max(rc, 0.6)
     f['role_compatibility']  = rc
-    f['complementary_roles'] = 1 if rc >= 0.75 else 0
+    f['complementary_roles'] = 1 if rc >= 0.70 else 0
 
     # ── GROUP 6: GAME & SỞ THÍCH CHUNG (Jaccard 1912) ─────────────
     gs1 = set(u1.get('favoriteGames', []) or [])
@@ -390,7 +418,7 @@ def create_features(u1, u2):
 # SECTION 4: BUILD HYBRID DATASET (~8000 pairs)
 # ══════════════════════════════════════════════════════════════════════
 
-def build_dataset(user_dict, labels, weights, target_total=8000):
+def build_dataset(user_dict, labels, weights, target_total=None):
     """
     Phase 1: Real labeled pairs từ TẤT CẢ signals (weighted)
     Phase 2: Synthetic augmentation → tổng ~target_total pairs
@@ -415,6 +443,10 @@ def build_dataset(user_dict, labels, weights, target_total=8000):
     like_r    = sum(y_labels)
     dislike_r = len(y_labels) - like_r
     print(f"\n  Phase 1 — Real pairs: {real_count}")
+
+    if target_total is None:
+        target_total = int(real_count * 1.3)  # Real ~77%, Synthetic ~23%
+
     print(f"    Like (1)   : {like_r}  (avg weight={np.mean([y_weights[i] for i in range(len(y_labels)) if y_labels[i]==1]):.2f})")
     print(f"    Dislike (0): {dislike_r}  (avg weight={np.mean([y_weights[i] for i in range(len(y_labels)) if y_labels[i]==0]):.2f})")
 
@@ -465,7 +497,8 @@ def build_dataset(user_dict, labels, weights, target_total=8000):
     print(f"    Compatible  : {aug_c} | Incompatible: {aug_i}")
     print(f"\n  ┌──────────────────────────────────────────────────┐")
     print(f"  │ Total pairs    : {len(pairs):>6}                        │")
-    print(f"  │ Real (weighted): {real_count:>6} ({real_count/len(pairs)*100:.1f}%)              │")
+    real_avg_w = np.mean(y_weights[:real_count])
+    print(f"  │ Real (weighted): {real_count:>6} ({real_count/len(pairs)*100:.1f}%) avg_w={real_avg_w:.2f}    │")
     print(f"  │ Synthetic      : {total_aug:>6} ({total_aug/len(pairs)*100:.1f}%) weight=0.5     │")
     print(f"  │ Label 1 (like) : {sum(y_labels):>6}                        │")
     print(f"  │ Label 0 (dis)  : {len(y_labels)-sum(y_labels):>6}                        │")
@@ -765,7 +798,7 @@ def main():
     print("\n" + "=" * 65)
     print("🔨 BUILDING HYBRID DATASET (all signals + 62 features)")
     print("=" * 65)
-    X_df, y, sample_weight = build_dataset(user_dict, labels, weights, target_total=8000)
+    X_df, y, sample_weight = build_dataset(user_dict, labels, weights, target_total=None)
     X = X_df.values
     feature_names = X_df.columns.tolist()
     print(f"\n  Features : {len(feature_names)}")
