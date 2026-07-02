@@ -815,7 +815,7 @@ def main():
 
     time_taken = time.time() - start_time
     telegram_logger.log_training_end(
-        version="3.0.0",
+        version=f"3.0.{os.getenv('GITHUB_RUN_NUMBER', '0')}",
         time_taken=time_taken,
         total_pairs=len(y),
         train_size=len(y_tr),
