@@ -71,7 +71,7 @@ jobs:
 
     - name: Reload model on Railway API
       run: |
-        curl -X POST "${{ secrets.API_RELOAD_URL }}" \
+        curl -X POST "https://web-production-188ce.up.railway.app/reload_model" \
           -H "Authorization: Bearer ${{ secrets.MODEL_DOWNLOAD_TOKEN }}" \
           -F "model=@models/pairwise_compatibility_model.pkl" \
           -F "scaler=@models/pairwise_scaler.pkl"
