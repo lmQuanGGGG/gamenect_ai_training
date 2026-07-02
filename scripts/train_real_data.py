@@ -37,9 +37,11 @@ PIPELINE:
 
 import os, sys, json, warnings, numpy as np, pandas as pd
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+load_dotenv()
 
 from datetime import datetime
 from collections import Counter
