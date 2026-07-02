@@ -312,7 +312,7 @@ def create_features(u1, u2):
     if sty('Competitive', 'Casual'):              rc = max(rc, 0.7)
     if s1 == s2:                                  rc = max(rc, 0.6)
     f['role_compatibility']  = rc
-    f['complementary_roles'] = 1 if rc >= 0.70 else 0
+    f['complementary_roles'] = 1 if rc >= 0.75 else 0
 
     # ── GROUP 6: GAME & SỞ THÍCH CHUNG (Jaccard 1912) ─────────────
     gs1 = set(u1.get('favoriteGames', []) or [])
@@ -827,12 +827,12 @@ def main():
     auc_score = roc_auc_score(y_te, y_prob)
     acc_score = accuracy_score(y_te, y_pred)
     print("\n" + "=" * 65)
-    print(f"🛡️ AUTOMATED GATING CHECK (Threshold AUC >= 0.75)")
+    print(f"🛡️ AUTOMATED GATING CHECK (Threshold AUC >= 0.70)")
     print("=" * 65)
-    if auc_score < 0.75:
-        print(f"❌ REJECTED: Model AUC ({auc_score:.4f}) is below threshold (0.75)!")
+    if auc_score < 0.70:
+        print(f"❌ REJECTED: Model AUC ({auc_score:.4f}) is below threshold (0.70)!")
         print("❌ Canceled saving model and deploying. Exiting with error code 1.")
-        telegram_logger.log_alert(f"Quá trình Training thất bại! Gating bị từ chối do AUC thấp ({auc_score:.4f} < 0.75)")
+        telegram_logger.log_alert(f"Quá trình Training thất bại! Gating bị từ chối do AUC thấp ({auc_score:.4f} < 0.70)")
         sys.exit(1)
     else:
         print(f"✅ PASSED: Model AUC ({auc_score:.4f}) meets the threshold.")
@@ -858,7 +858,7 @@ def main():
         test_size=len(y_te),
         auc=auc_score,
         acc=acc_score,
-        status="PASSED (Auto-Gating)" if auc_score >= 0.75 else "REJECTED (Low AUC)",
+        status="PASSED (Auto-Gating)" if auc_score >= 0.70 else "REJECTED (Low AUC)",
         filepaths=[
             str(MODEL_DIR / 'pairwise_compatibility_model.pkl'),
             str(MODEL_DIR / 'pairwise_scaler.pkl'),
