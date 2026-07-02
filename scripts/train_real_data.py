@@ -809,7 +809,12 @@ def main():
     print(f"  Labels   : {Counter(y.tolist())}")
 
     # 4. Compare models
-    compare_models(X_df, y, sample_weight)
+    cv_results = compare_models(X_df, y, sample_weight)
+    
+    import json
+    cv_results_path = REPORT_DIR / 'cv_results.json'
+    with open(cv_results_path, 'w', encoding='utf-8') as f:
+        json.dump(cv_results, f, indent=4)
 
     # 5. Tune
     best_pipe, best_params = tune_model(X_df, y)
@@ -848,6 +853,10 @@ def main():
         "signals_count":     len(labels),
     }
     save_model(model, scaler, feature_names, best_params, y, dataset_info, auc_score)
+
+    import subprocess
+    print("\n  Generating model comparison plot...")
+    subprocess.run(["python3", "scripts/plot_model_comparison.py"], check=False)
 
     time_taken = time.time() - start_time
     telegram_logger.log_training_end(

@@ -3,46 +3,31 @@ import seaborn as sns
 import numpy as np
 
 def plot_comparison():
-    # Hardcoded or parsed metrics from CV
-    # We will put the values here after we know them, or we can just parse the log directly.
-    # Let's write a simple parser for the log file
-    log_file = "/Users/wang04/.gemini/antigravity-ide/brain/c3276a4a-0b60-4c88-9e57-f1829c25c073/.system_generated/tasks/task-504.log"
+    import json
+    import os
+    
+    json_file = "/Users/wang04/Downloads/GAMENECT/gamenect_ai_training/reports/cv_results.json"
     
     models = []
     aucs = []
     f1s = []
     accs = []
     
-    with open(log_file, "r") as f:
-        lines = f.readlines()
+    if not os.path.exists(json_file):
+        print("Không tìm thấy file cv_results.json. Vui lòng chạy lại script train_real_data.py để tạo data trước.")
+        return
         
-    start_parsing = False
-    for line in lines:
-        if "Model" in line and "AUC" in line and "F1" in line and "Acc" in line:
-            start_parsing = True
-            continue
-        if start_parsing:
-            if "─" in line or "=" in line:
-                continue
-            if line.strip() == "":
-                break
-            parts = line.split()
-            if len(parts) >= 4:
-                # "Gradient Boosting              0.9385±0.003  0.7850±0.004  0.8123±0.003"
-                try:
-                    name = " ".join(parts[:-3])
-                    auc = float(parts[-3].split("±")[0])
-                    f1 = float(parts[-2].split("±")[0])
-                    acc = float(parts[-1].split("±")[0])
-                    models.append(name)
-                    aucs.append(auc)
-                    f1s.append(f1)
-                    accs.append(acc)
-                except Exception as e:
-                    pass
-    
+    with open(json_file, "r", encoding="utf-8") as f:
+        results = json.load(f)
+        
+    for name, res in results.items():
+        models.append(name)
+        aucs.append(res['roc_auc'][0])
+        f1s.append(res['f1'][0])
+        accs.append(res['accuracy'][0])
+        
     if not models:
-        print("Not finished or could not parse models.")
+        print("File cv_results.json trống hoặc không hợp lệ.")
         return
 
     x = np.arange(len(models))
