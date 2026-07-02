@@ -35,7 +35,7 @@ PIPELINE:
   ⑦ Save model + metadata
 """
 
-import json, warnings, numpy as np, pandas as pd
+import os, sys, json, warnings, numpy as np, pandas as pd
 from pathlib import Path
 from datetime import datetime
 from collections import Counter
@@ -571,7 +571,8 @@ def train_and_evaluate(X_df, y, sample_weight, best_params):
     y_prob = model.predict_proba(X_te_sc)[:, 1]
     auc    = roc_auc_score(y_te, y_prob)
 
-    print(f"\n  Test set : {len(X_te)} samples")
+    print(f"\n  Train set: {len(X_tr)} samples")
+    print(f"  Test set : {len(X_te)} samples")
     print(f"  ROC-AUC  : {auc:.4f}")
     print(f"  Accuracy : {accuracy_score(y_te, y_pred):.4f}")
     print(f"  F1       : {f1_score(y_te, y_pred):.4f}")
@@ -579,14 +580,14 @@ def train_and_evaluate(X_df, y, sample_weight, best_params):
     print(f"  Recall   : {recall_score(y_te, y_pred):.4f}")
     print(classification_report(y_te, y_pred, target_names=['Incompatible', 'Compatible']))
 
-    return model, scaler, X_te_sc, y_te, y_pred, y_prob
+    return model, scaler, X_tr, y_tr, X_te_sc, y_te, y_pred, y_prob
 
 
 # ══════════════════════════════════════════════════════════════════════
 # SECTION 8: VISUALIZATIONS
 # ══════════════════════════════════════════════════════════════════════
 
-def generate_plots(model, feature_names, X, y, X_te_sc, y_te, y_pred, y_prob):
+def generate_plots(model, feature_names, X_tr, y_tr, X_te_sc, y_te, y_pred, y_prob):
     print("\n" + "=" * 65)
     print("📈 GENERATING ALL VISUALIZATIONS")
     print("=" * 65)
@@ -604,10 +605,10 @@ def generate_plots(model, feature_names, X, y, X_te_sc, y_te, y_pred, y_prob):
     axes[0,0].set(title='Confusion Matrix', ylabel='Actual', xlabel='Predicted')
 
     RocCurveDisplay.from_predictions(y_te, y_prob, ax=axes[0,1],
-                                     name=f'GBC (AUC={roc_auc_score(y_te,y_prob):.3f})', color='royalblue')
+                                     name=f'GBC (AUC={roc_auc_score(y_te,y_prob):.3f})')
     axes[0,1].plot([0,1],[0,1],'k--',alpha=0.4,label='Random'); axes[0,1].set_title('ROC Curve'); axes[0,1].legend()
 
-    PrecisionRecallDisplay.from_predictions(y_te, y_prob, ax=axes[1,0], name='GBC', color='coral')
+    PrecisionRecallDisplay.from_predictions(y_te, y_prob, ax=axes[1,0], name='GBC')
     axes[1,0].set_title('Precision-Recall Curve')
 
     imp_df = pd.DataFrame({'feature': feature_names, 'importance': model.feature_importances_})\
@@ -624,7 +625,8 @@ def generate_plots(model, feature_names, X, y, X_te_sc, y_te, y_pred, y_prob):
     from sklearn.pipeline import Pipeline as _Pipe
     pipe_lc = _Pipe([('sc', StandardScaler()), ('clf', model)])
     sizes   = np.linspace(0.15, 1.0, 8)
-    tsz, tr_sc, va_sc = learning_curve(pipe_lc, X, y, train_sizes=sizes,
+    # pyrefly: ignore [bad-unpacking]
+    tsz, tr_sc, va_sc = learning_curve(pipe_lc, X_tr, y_tr, train_sizes=sizes,
                                         cv=StratifiedKFold(5, shuffle=True, random_state=42),
                                         scoring='roc_auc', n_jobs=-1)
     fig, ax = plt.subplots(figsize=(9, 6))
@@ -672,13 +674,13 @@ def generate_plots(model, feature_names, X, y, X_te_sc, y_te, y_pred, y_prob):
 # SECTION 9: SAVE MODEL + FULL METADATA
 # ══════════════════════════════════════════════════════════════════════
 
-def save_model(model, scaler, feature_names, best_params, y, dataset_info):
+def save_model(model, scaler, feature_names, best_params, y, dataset_info, auc_score=None):
     joblib.dump(model,         MODEL_DIR / 'pairwise_compatibility_model.pkl')
     joblib.dump(scaler,        MODEL_DIR / 'pairwise_scaler.pkl')
     joblib.dump(feature_names, MODEL_DIR / 'pairwise_feature_names.pkl')
 
     metadata = {
-        "version":            "3.0.0",
+        "version":            f"3.0.{os.getenv('GITHUB_RUN_NUMBER', '0')}",
         "trained_at":         datetime.now().isoformat(),
         "data_source":        "Firebase Firestore — All collections",
         "training_strategy":  "Hybrid weighted: all signals (swipe+match+profile) + clear synthetic",
@@ -711,10 +713,16 @@ def save_model(model, scaler, feature_names, best_params, y, dataset_info):
 
     with open(MODEL_DIR / 'model_metadata.json', 'w', encoding='utf-8') as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)
+        
+    log_file = MODEL_DIR / 'training_history.log'
+    with open(log_file, 'a', encoding='utf-8') as f:
+        auc_str = f" | AUC: {auc_score:.4f}" if auc_score else ""
+        f.write(f"[{metadata['trained_at']}] Version: {metadata['version']} | Data: {dataset_info['total_pairs']} (Train: {dataset_info.get('train_size', 0)}, Test: {dataset_info.get('test_size', 0)}){auc_str} | Status: PASSED (Auto-Gating)\n")
 
     print(f"\n  ✅ Model   → {MODEL_DIR / 'pairwise_compatibility_model.pkl'}")
     print(f"  ✅ Scaler  → {MODEL_DIR / 'pairwise_scaler.pkl'}")
     print(f"  ✅ Meta    → {MODEL_DIR / 'model_metadata.json'}")
+    print(f"  ✅ Log     → {log_file}")
     print(f"  ✅ Reports → {REPORT_DIR}/")
 
 
@@ -757,22 +765,37 @@ def main():
     best_pipe, best_params = tune_model(X_df, y)
 
     # 6. Final train + eval (with sample_weight)
-    model, scaler, X_te_sc, y_te, y_pred, y_prob = train_and_evaluate(
+    model, scaler, X_tr, y_tr, X_te_sc, y_te, y_pred, y_prob = train_and_evaluate(
         X_df, y, sample_weight, best_params
     )
 
     # 7. Plots
-    generate_plots(model, feature_names, X, y, X_te_sc, y_te, y_pred, y_prob)
+    generate_plots(model, feature_names, X_tr, y_tr, X_te_sc, y_te, y_pred, y_prob)
+
+    # 7.5 Automated Gating (Tiêu chí thay thế model)
+    from sklearn.metrics import roc_auc_score
+    auc_score = roc_auc_score(y_te, y_prob)
+    print("\n" + "=" * 65)
+    print(f"🛡️ AUTOMATED GATING CHECK (Threshold AUC >= 0.75)")
+    print("=" * 65)
+    if auc_score < 0.75:
+        print(f"❌ REJECTED: Model AUC ({auc_score:.4f}) is below threshold (0.75)!")
+        print("❌ Canceled saving model and deploying. Exiting with error code 1.")
+        sys.exit(1)
+    else:
+        print(f"✅ PASSED: Model AUC ({auc_score:.4f}) meets the threshold.")
 
     # 8. Save
     dataset_info = {
         "total_pairs":       int(len(y)),
+        "train_size":        int(len(y_tr)),
+        "test_size":         int(len(y_te)),
         "real_pairs":        int(sum(1 for w in sample_weight if w >= 1.0)),
         "synthetic_pairs":   int(sum(1 for w in sample_weight if w < 1.0)),
         "positive_rate":     float(y.mean()),
         "signals_count":     len(labels),
     }
-    save_model(model, scaler, feature_names, best_params, y, dataset_info)
+    save_model(model, scaler, feature_names, best_params, y, dataset_info, auc_score)
 
     print("\n" + "█" * 65)
     print("█  TRAINING v3.0 COMPLETED                                  █")

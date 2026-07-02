@@ -64,7 +64,7 @@ jobs:
       with:
         name: training-logs
         path: |
-          logs/training_history/*.json
+          models/training_history.log
         retention-days: 7
 
     - name: Reload model on Railway API

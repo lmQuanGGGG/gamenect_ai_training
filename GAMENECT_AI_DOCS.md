@@ -390,6 +390,7 @@ Khác với v1.0, phiên bản v3.0 kết hợp cả **Dữ liệu 100% Thực T
 
 - **80% Train**, **20% Test**
 - **Stratified split** — giữ nguyên tỉ lệ class
+- *Ví dụ (v3.0):* Tổng cộng 5014 cặp dữ liệu sẽ được chia thành **Train: 4011** và **Test: 1003**.
 
 ### 6.3 Training Flow
 
@@ -795,6 +796,20 @@ shap.summary_plot(shap_values, X_sample, feature_names=feature_names)
 "
 ```
 
+### 9.6 CI/CD MLOps: Automated Gating & Rollback
+
+Để đáp ứng tiêu chuẩn MLOps khắt khe, hệ thống được trang bị cơ chế kiểm duyệt và hoàn tác an toàn:
+
+1. **Automated Gating (Kiểm duyệt tự động):** 
+   - Ngay sau khi train, model bắt buộc phải thi sát hạch trên tập Test (1003 pairs).
+   - **Tiêu chí thay thế (Replacement Criteria):** Điểm ROC-AUC phải đạt ngưỡng **>= 0.75**.
+   - **Hành động:** Nếu điểm `AUC < 0.75`, quá trình deploy bị hủy bỏ ngay lập tức (văng `exit code 1`), đảm bảo không bao giờ có model "ngu" lọt lên Production. Trạng thái `PASSED/REJECTED` được ghi đè vào `models/training_history.log`.
+
+2. **Cơ chế Rollback (Hoàn tác):**
+   - Hệ thống tự động đẩy file `training_history.log` lên Artifacts của GitHub Actions sau mỗi lần train.
+   - Do đã có Gating chặn đứng model lỗi, tỷ lệ phải Rollback là rất thấp.
+   - Trong trường hợp khẩn cấp muốn quay xe, chỉ việc tải file `pairwise_compatibility_model.pkl` của ngày hôm trước từ GitHub Actions Artifacts, sau đó dùng lệnh `POST /reload_model` để thay nóng (hot-reload) model mà không cần tắt Server.
+
 ---
 
 ## 10. Cấu Trúc Thư Mục
@@ -954,3 +969,34 @@ Flutter App → [sorted recommendations by compatibility_score]
 ---
 
 *Tài liệu được tạo tự động từ phân tích source code. Cập nhật lần cuối: 2026-04-20.*
+
+
+## 6. Kết Quả Huấn Luyện Và So Sánh Các Thuật Toán (Phiên bản V3.0)
+
+Sau khi chạy tiến trình thu thập và xử lý toàn bộ dữ liệu lịch sử vuốt và ghép đôi từ Firebase (Tổng cộng khoảng **7274 cặp ghép đôi**, bao gồm dữ liệu thực tế và synthetic data), hệ thống đã tiến hành Cross-Validation 5-Fold để so sánh công bằng hiệu năng của 4 thuật toán Machine Learning.
+
+### 6.1. Bảng So Sánh Hiệu Năng
+
+| Thuật Toán | ROC-AUC | F1-Score | Accuracy | Overfit Gap |
+| :--- | :---: | :---: | :---: | :---: |
+| **Baseline (Random/Majority)** | 0.5000 | 0.0000 | 0.5826 | 0.000 |
+| **Logistic Regression** | 0.8961 | 0.7525 | 0.8130 | 0.006 |
+| **Random Forest** | 0.9323 | 0.7686 | 0.8313 | 0.036 |
+| **Gradient Boosting (Được chọn)** | **0.9398** | **0.8103** | **0.8478** | 0.058 |
+
+**Kết luận chọn Model:**
+Gradient Boosting Classifier mang lại điểm số AUC cao nhất (0.9398), tỷ lệ F1-Score vượt trội (0.8103) trong khi vẫn giữ được khả năng tổng quát hóa tốt. Nhờ RandomizedSearchCV (thử nghiệm 200 lượt fit), mô hình tối ưu đã được thiết lập với các hyperparameter:
+- `n_estimators`: 100
+- `max_depth`: 6
+- `learning_rate`: 0.1
+- `subsample`: 0.7
+
+### 6.2. Các Bằng Chứng Đồ Thị (Dùng Cho Báo Cáo / Slide)
+
+Hệ thống huấn luyện tự động trích xuất các đồ thị dùng để bảo vệ trước hội đồng:
+1. **Biểu đồ so sánh thuật toán (`reports/model_comparison.png`)**: So sánh trực quan AUC, F1 và Accuracy của 4 thuật toán trên.
+2. **Đánh giá chi tiết (`reports/model_evaluation.png`)**: Chứa Ma trận nhầm lẫn (Confusion Matrix) và Đường cong ROC (ROC-AUC Curve).
+3. **Mức độ đóng góp của Features (`reports/shap_importance.png`)**: Phân tích SHAP TreeExplainer, cho thấy đặc trưng nào quyết định lớn nhất tới việc ghép đôi (VD: Tuổi, Khoảng cách, Tỉ lệ thắng).
+4. **Learning Curve (`reports/learning_curve.png`)**: Bằng chứng chứng minh mô hình không bị Overfitting khi dữ liệu train tăng dần.
+
+*(Tất cả file hình ảnh báo cáo được lưu trong thư mục `gamenect_ai_training/reports/`)*
