@@ -119,7 +119,7 @@ def build_user_dict(users):
 # SECTION 2: MERGE ALL INTERACTION SIGNALS
 # ══════════════════════════════════════════════════════════════════════
 
-def merge_all_signals(swipe_history, swipe_latest, matches):
+def merge_all_signals(swipe_history, swipe_latest, matches, user_dict):
     """
     Merge TẤT CẢ signals tương tác với weight khác nhau:
 
@@ -141,6 +141,11 @@ def merge_all_signals(swipe_history, swipe_latest, matches):
         uid = s.get('userId')
         action = s.get('action')
         if not uid or not action: continue
+
+        # Bỏ qua dữ liệu do Bot tạo ra để giữ sạch tập Real Data (chỉ lọc theo cờ isBot)
+        if s.get('isBot'):
+            continue
+
         if uid not in user_swipe_counts:
             user_swipe_counts[uid] = {'like': 0, 'dislike': 0}
         if action in ['like', 'dislike']:
@@ -160,7 +165,13 @@ def merge_all_signals(swipe_history, swipe_latest, matches):
 
     # ── Signal 1+2: Swipe History + Latest ──────────────────────────
     for s in swipe_history + swipe_latest:
-        key    = (s.get('userId'), s.get('targetUserId'))
+        uid = s.get('userId')
+        
+        # Bỏ qua dữ liệu do Bot tạo ra (cờ isBot)
+        if s.get('isBot'):
+            continue
+            
+        key    = (uid, s.get('targetUserId'))
         if not key[0] or not key[1]: continue
         action = s.get('action')
         lbl    = 1 if action == 'like' else 0
@@ -182,6 +193,9 @@ def merge_all_signals(swipe_history, swipe_latest, matches):
         if len(user_ids) != 2:
             continue
         u1, u2 = user_ids[0], user_ids[1]
+        
+        # (User không yêu cầu check botVersion ở đây nên giữ nguyên logic gốc)
+            
         status = m.get('status', '')
         w = 2.0 if status == 'confirmed' else 0.8  # Confirmed = stronger
 
@@ -220,20 +234,20 @@ def calc_distance(u1, u2):
         return 500.0
 
 
-def days_since(date_str):
+def days_since(date_str, snapshot_now=None):
     """Tính số ngày kể từ lastSeen"""
     if not date_str:
         return 999
     try:
         from datetime import timezone
         dt = datetime.fromisoformat(str(date_str).replace('Z', '+00:00'))
-        now = datetime.now(timezone.utc)
+        now = snapshot_now if snapshot_now else datetime.now(timezone.utc)
         return max((now - dt).days, 0)
     except Exception:
         return 999
 
 
-def create_features(u1, u2):
+def create_features(u1, u2, snapshot_now=None):
     """
     Tạo 62 features cho cặp (u1, u2).
     Dùng TẤT CẢ thông tin có trong user profile từ Firebase.
@@ -385,8 +399,8 @@ def create_features(u1, u2):
     f['both_show_online'] = 1 if (u1.get('showOnlineStatus') and u2.get('showOnlineStatus')) else 0
 
     # ── GROUP 12: ACTIVITY RECENCY (Online & LastSeen) ─────────────
-    d1 = days_since(u1.get('lastSeen', ''))
-    d2 = days_since(u2.get('lastSeen', ''))
+    d1 = days_since(u1.get('lastSeen', ''), snapshot_now)
+    d2 = days_since(u2.get('lastSeen', ''), snapshot_now)
     f['days_since_seen_u1']  = min(d1, 365)
     f['days_since_seen_u2']  = min(d2, 365)
     f['both_active_7d']      = 1 if (d1 <= 7  and d2 <= 7)  else 0
@@ -425,6 +439,16 @@ def build_dataset(user_dict, labels, weights, target_total=None):
     """
     pairs, y_labels, y_weights = [], [], []
     real_keys = set()
+    
+    from datetime import timezone
+    last_seens = []
+    for u in user_dict.values():
+        if u.get('lastSeen'):
+            try:
+                last_seens.append(datetime.fromisoformat(str(u['lastSeen']).replace('Z', '+00:00')))
+            except:
+                pass
+    snapshot_now = max(last_seens) if last_seens else datetime.now(timezone.utc)
 
     # ── PHASE 1: REAL LABELED PAIRS ────────────────────────────────
     real_count = 0
@@ -432,7 +456,7 @@ def build_dataset(user_dict, labels, weights, target_total=None):
         u1 = user_dict.get(uid1); u2 = user_dict.get(uid2)
         if u1 is None or u2 is None:
             continue
-        feats = create_features(u1, u2)
+        feats = create_features(u1, u2, snapshot_now)
         pairs.append(feats)
         y_labels.append(lbl)
         y_weights.append(weights.get((uid1, uid2), 1.0))
@@ -473,7 +497,7 @@ def build_dataset(user_dict, labels, weights, target_total=None):
             if (uid1, uid2) in real_keys or uid1 == uid2:
                 continue
 
-            feats = create_features(u1, u2)
+            feats = create_features(u1, u2, snapshot_now)
 
             clearly_compat = (
                 feats['deal_breaker_count'] == 0 and
@@ -782,20 +806,22 @@ def main():
     print("█" * 65 + "\n")
 
     telegram_logger.log_training_start(
-    "GAMENECT_AI_V3.0",
-    config={"pipeline": "v3.0", "target_total": "dynamic_real_x1.3", "signals": "swipe+match"}
-)
+        "GAMENECT_AI_V3.0",
+        config={"pipeline": "v3.0", "target_total": "dynamic_real_x1.3", "signals": "swipe+match"}
+    )
 
-    # 1. Load
-    users, swipe_hist, swipe_latest, matches = load_all_data()
+    users, swipe_history, swipe_latest, matches = load_all_data()
+
+    # 1. Build dict
     user_dict = build_user_dict(users)
-    print(f"\n  User dict: {len(user_dict)} users")
+
+    # 2. Merge labels
+    labels, weights = merge_all_signals(swipe_history, swipe_latest, matches, user_dict)
 
     # 2. Merge ALL signals
     print("\n" + "=" * 65)
     print("🔗 MERGING ALL INTERACTION SIGNALS")
     print("=" * 65)
-    labels, weights = merge_all_signals(swipe_hist, swipe_latest, matches)
 
     # 3. Build dataset
     print("\n" + "=" * 65)
