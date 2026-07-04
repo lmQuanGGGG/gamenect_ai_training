@@ -283,6 +283,8 @@ km = 6371 · c
 
 *(Đây là danh sách chi tiết gồm 62 thông số thực tế được trích xuất từ code v3.0).*
 
+> 🛡️ **Ngăn Chặn Feature Drift (Cập nhật mới):** Các feature tính theo thời gian thực (như `days_since_seen_u1`, `days_since_seen_u2`) được tính dựa trên `snapshot_now` (mốc thời gian hoạt động cuối cùng của toàn bộ user trong tập dữ liệu) thay vì `datetime.now()`. Cơ chế này triệt tiêu hoàn toàn Data Drift khi retrain model với dữ liệu tĩnh sau thời gian dài.
+
 **Bảng tương thích phong cách game:**
 
 ```
@@ -382,6 +384,7 @@ Khác với v1.0, phiên bản v3.0 kết hợp cả **Dữ liệu 100% Thực T
 **1. Real Pairs (Dữ liệu Quẹt/Match thực):**
 - Trích xuất toàn bộ lịch sử quẹt trái/phải (`swipe_history`).
 - Điểm đánh trọng số (Weight): Các cặp match thực tế sẽ được nhân `weight = 1.0 -> 2.0` để AI ưu tiên học thói quen thực của môi trường hơn.
+- 🛡️ **Anti-Bot Filtering:** Tự động loại bỏ mọi lượt quẹt có cờ `isBot: true` (từ `auto_like.js` hoặc các kịch bản auto swipe khác) để đảm bảo tập Real Data hoàn toàn phản ánh tâm lý người thật 100%.
 
 **2. Synthetic Pairs (Dữ liệu mô phỏng/Quy tắc):**
 - Bổ sung data để giải quyết Cold-Start, nhưng bị ép `weight = 0.5` để không làm lấn át Data thực tế. Nhìn chung sẽ cân bằng ở tỉ lệ `87% Real - 13% Synthetic`.
